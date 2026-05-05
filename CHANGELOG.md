@@ -8,7 +8,7 @@
 - Added duplicate checks for custom preset names and matching rule/color configurations.
 - Switched app release naming to the `v1.x` scheme.
 
-## 0.3.0 - 2026-05-05
+## v1.12 - 2026-05-05
 
 - Added Supabase-backed shared storage support for players, custom presets, and results.
 - Added duplicate checks for player creation.
@@ -16,7 +16,7 @@
 - Fixed Play page horizontal overflow caused by the hidden awake toggle input.
 - Added initial repo documentation and version tracking.
 
-## 0.2.0 - 2026-05-05
+## v1.11 - 2026-05-05
 
 - Renamed the app to Reflex.
 - Added the pulse bolt logo, app icons, and splash screen.
@@ -24,7 +24,7 @@
 - Added full-screen game mode with countdown, rest countdown, and live metrics.
 - Added result details and leaderboard views.
 
-## 0.1.0 - 2026-05-05
+## v1.10 - 2026-05-05
 
 - Initial static PWA prototype.
 - Added reaction training setup, color prompts, presets, and local results.
