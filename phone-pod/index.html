@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#101418" />
+    <title>PhonePod Trainer</title>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="home-header">
+      <a class="brand-mark" href="#trainer" aria-label="PhonePod Trainer home">
+        <span class="brand-dot"></span>
+        PhonePod Trainer
+      </a>
+      <nav class="site-nav" aria-label="Page sections">
+        <a href="#trainer">Trainer</a>
+        <a href="#tutorial">Tutorial</a>
+        <a href="#features">Features</a>
+        <a href="#use-cases">Use cases</a>
+      </nav>
+    </header>
+
+    <main class="app-shell" id="trainer">
+      <section class="training-stage" aria-label="Training screen">
+        <div class="status-bar">
+          <div>
+            <p class="eyebrow">PhonePod</p>
+            <h1 id="modeTitle">Random Reaction</h1>
+          </div>
+          <button class="icon-button" id="wakeLockButton" type="button" title="Keep screen awake">Awake</button>
+        </div>
+
+        <button class="pod-screen is-idle" id="podButton" type="button" aria-label="Tap active color">
+          <span id="podLabel">Ready</span>
+          <span class="pod-subcopy" id="podSubcopy">Configure, start, tap.</span>
+        </button>
+
+        <div class="metric-strip" aria-label="Live stats">
+          <div>
+            <span id="hitCount">0</span>
+            <small>Hits</small>
+          </div>
+          <div>
+            <span id="avgReaction">--</span>
+            <small>Avg</small>
+          </div>
+          <div>
+            <span id="remainingValue">--</span>
+            <small>Left</small>
+          </div>
+          <div>
+            <span id="cycleValue">1/1</span>
+            <small>Cycle</small>
+          </div>
+        </div>
+
+        <div class="run-controls">
+          <button class="primary-button" id="startButton" type="button">Start</button>
+          <button class="secondary-button" id="pauseButton" type="button" disabled>Pause</button>
+          <button class="secondary-button" id="resetButton" type="button">Reset</button>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="Training controls">
+        <nav class="tabs" aria-label="Sections">
+          <button class="tab is-active" data-tab="setup" type="button">Setup</button>
+          <button class="tab" data-tab="colors" type="button">Colors</button>
+          <button class="tab" data-tab="results" type="button">Results</button>
+        </nav>
+
+        <form class="panel-page is-active" id="setupPanel">
+          <label>
+            Activity
+            <select id="activityMode">
+              <option value="random">Random Reaction</option>
+              <option value="focus">Focus</option>
+              <option value="sequence">Sequence</option>
+              <option value="homeBase">Home Base</option>
+            </select>
+          </label>
+
+          <label>
+            Player
+            <input id="playerName" value="Player 1" maxlength="30" />
+          </label>
+
+          <div class="two-col">
+            <label>
+              Duration
+              <select id="durationMode">
+                <option value="timeout">Timeout</option>
+                <option value="hits">Hit target</option>
+                <option value="both">Hit or timeout</option>
+              </select>
+            </label>
+            <label>
+              Lights out
+              <select id="lightsOutMode">
+                <option value="hit">Hit</option>
+                <option value="timeout">Timeout</option>
+                <option value="both">Hit or timeout</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="two-col">
+            <label>
+              Time limit
+              <input id="timeLimit" type="number" min="5" max="900" value="45" />
+            </label>
+            <label>
+              Hit target
+              <input id="hitTarget" type="number" min="1" max="999" value="20" />
+            </label>
+          </div>
+
+          <div class="two-col">
+            <label>
+              Light timeout
+              <input id="lightTimeout" type="number" min="0.2" max="30" step="0.1" value="2.5" />
+            </label>
+            <label>
+              Delay
+              <select id="delayMode">
+                <option value="none">None</option>
+                <option value="fixed">Fixed</option>
+                <option value="random">Random</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="two-col">
+            <label>
+              Fixed delay
+              <input id="fixedDelay" type="number" min="0" max="20" step="0.1" value="0.4" />
+            </label>
+            <label>
+              Random delay max
+              <input id="randomDelayMax" type="number" min="0" max="20" step="0.1" value="1.5" />
+            </label>
+          </div>
+
+          <div class="two-col">
+            <label>
+              Cycles
+              <input id="cycles" type="number" min="1" max="20" value="1" />
+            </label>
+            <label>
+              Rest seconds
+              <input id="restSeconds" type="number" min="0" max="300" value="20" />
+            </label>
+          </div>
+
+          <div class="mode-options" id="modeOptions">
+            <label>
+              Focus strikes
+              <input id="strikeLimit" type="number" min="1" max="20" value="3" />
+            </label>
+            <label>
+              Sequence steps
+              <input id="sequenceSteps" type="number" min="2" max="24" value="6" />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="secondary-button" id="savePresetButton" type="button">Save preset</button>
+            <button class="secondary-button" id="loadPresetButton" type="button">Load preset</button>
+          </div>
+        </form>
+
+        <section class="panel-page" id="colorsPanel">
+          <div class="color-grid" id="colorGrid" aria-label="Training colors"></div>
+          <label>
+            Home base color
+            <select id="homeBaseColor"></select>
+          </label>
+          <label>
+            Focus target color
+            <select id="focusTargetColor"></select>
+          </label>
+          <label>
+            Distracting colors
+            <select id="distractorCount">
+              <option value="1">1 color</option>
+              <option value="2">2 colors</option>
+              <option value="3">3 colors</option>
+              <option value="4">4 colors</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel-page" id="resultsPanel">
+          <div class="result-card">
+            <h2>Current run</h2>
+            <dl id="currentResults"></dl>
+          </div>
+          <div class="result-card">
+            <div class="section-heading">
+              <h2>History</h2>
+              <button class="text-button" id="exportButton" type="button">Export CSV</button>
+            </div>
+            <ol class="history-list" id="historyList"></ol>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <section class="guide-section" id="tutorial" aria-labelledby="tutorialTitle">
+      <div class="guide-heading">
+        <p class="eyebrow">Tutorial</p>
+        <h2 id="tutorialTitle">Set up a practical drill in under a minute</h2>
+        <p>
+          Place the phone where the athlete can safely see and touch it. Keep the screen awake, choose the
+          drill rules, then start and record reactions.
+        </p>
+      </div>
+
+      <div class="tutorial-grid">
+        <article class="tutorial-card">
+          <div class="visual visual-phone">
+            <span class="phone-speaker"></span>
+            <span class="phone-screen">Tap zone</span>
+          </div>
+          <h3>1. Position the phone</h3>
+          <p>Use a stable surface, mat, wall mount, or hand-held position. Leave enough space so taps are quick but safe.</p>
+        </article>
+
+        <article class="tutorial-card">
+          <div class="visual visual-controls">
+            <span></span>
+            <span></span>
+            <span></span>
+            <strong>Mode</strong>
+          </div>
+          <h3>2. Choose the activity</h3>
+          <p>Start with Random Reaction for general speed, Focus for inhibition, Sequence for memory, or Home Base for return-to-center work.</p>
+        </article>
+
+        <article class="tutorial-card">
+          <div class="visual visual-timing">
+            <span>45s</span>
+            <span>20 hits</span>
+            <span>2.5s light</span>
+          </div>
+          <h3>3. Set timing rules</h3>
+          <p>Pick a time limit or hit target. Use light timeout to force faster reactions, and add delay when you want less predictable starts.</p>
+        </article>
+
+        <article class="tutorial-card">
+          <div class="visual visual-colors">
+            <span style="--swatch:#ff3b4f"></span>
+            <span style="--swatch:#2f80ff"></span>
+            <span style="--swatch:#39d98a"></span>
+            <span style="--swatch:#ffd166"></span>
+          </div>
+          <h3>4. Select colors</h3>
+          <p>Use fewer colors for beginners. For Focus mode, set one target color and treat the others as no-tap distractors.</p>
+        </article>
+
+        <article class="tutorial-card">
+          <div class="visual visual-run">
+            <span>Start</span>
+            <span>Tap</span>
+            <span>Result</span>
+          </div>
+          <h3>5. Run the drill</h3>
+          <p>Press Start, tap only when the active target appears, then check hits, misses, false hits, and average reaction time.</p>
+        </article>
+
+        <article class="tutorial-card">
+          <div class="visual visual-repeat">
+            <span>Save</span>
+            <span>Rest</span>
+            <span>Repeat</span>
+          </div>
+          <h3>6. Repeat consistently</h3>
+          <p>Save a preset when the setup works. Use cycles and rest seconds to compare multiple rounds fairly.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="guide-section" id="features" aria-labelledby="featuresTitle">
+      <div class="guide-heading">
+        <p class="eyebrow">Features</p>
+        <h2 id="featuresTitle">What each control is for</h2>
+      </div>
+
+      <div class="feature-list">
+        <article>
+          <h3>Random Reaction</h3>
+          <p>Shows random colors from your selected set. Best for simple reaction speed and warmups.</p>
+        </article>
+        <article>
+          <h3>Focus</h3>
+          <p>Only the target color should be tapped. Distractor colors train restraint, attention, and decision speed.</p>
+        </article>
+        <article>
+          <h3>Sequence</h3>
+          <p>Builds a repeatable color sequence for the round. Useful for memory, rhythm, and planned movement patterns.</p>
+        </article>
+        <article>
+          <h3>Home Base</h3>
+          <p>Alternates between a task color and a home color. Use it when the athlete must return to a start position after each action.</p>
+        </article>
+        <article>
+          <h3>Duration</h3>
+          <p>End by timeout, hit target, or whichever happens first. Time is better for conditioning; hit target is better for consistency.</p>
+        </article>
+        <article>
+          <h3>Lights out</h3>
+          <p>Choose whether a light disappears after a tap, after a timeout, or either. Timeout mode makes missed reactions visible.</p>
+        </article>
+        <article>
+          <h3>Delay</h3>
+          <p>Add no delay, fixed delay, or random delay before the next color. Random delay reduces guessing.</p>
+        </article>
+        <article>
+          <h3>Cycles and rest</h3>
+          <p>Run repeated rounds with planned breaks. This is the easiest way to compare performance while fatigue builds.</p>
+        </article>
+        <article>
+          <h3>Results</h3>
+          <p>Track hits, misses, false hits, best reaction, average reaction, history, and exportable CSV results.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="guide-section" id="use-cases" aria-labelledby="useCasesTitle">
+      <div class="guide-heading">
+        <p class="eyebrow">Use cases</p>
+        <h2 id="useCasesTitle">Example drills to try</h2>
+      </div>
+
+      <div class="use-case-grid">
+        <article>
+          <h3>Solo reaction test</h3>
+          <p>Random Reaction, 30 seconds, light timeout 1.5s. Place the phone on a table and tap as fast as possible.</p>
+        </article>
+        <article>
+          <h3>Goalkeeper hand speed</h3>
+          <p>Random Reaction, 45 seconds, random delay. Mount the phone at shoulder height and tap with the called hand.</p>
+        </article>
+        <article>
+          <h3>Basketball closeout reset</h3>
+          <p>Home Base, 60 seconds, green as home. Touch the phone, retreat to a cone, then return when home appears.</p>
+        </article>
+        <article>
+          <h3>Focus and no-tap control</h3>
+          <p>Focus, target green, three distractors, three strikes. Tap only green and count false hits as failed reps.</p>
+        </article>
+        <article>
+          <h3>Rehab range-of-motion reps</h3>
+          <p>Hit target, 15 hits, longer light timeout. Put the phone at a safe reach angle and track controlled touches.</p>
+        </article>
+        <article>
+          <h3>Team circuit station</h3>
+          <p>Cycles set to 4, rest 20 seconds. Each athlete takes one cycle, then compare average reaction time.</p>
+        </article>
+      </div>
+    </section>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
