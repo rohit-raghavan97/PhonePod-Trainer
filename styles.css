@@ -141,6 +141,7 @@ select {
 .player-list,
 .preset-list,
 .preset-picker,
+.preset-page-list,
 .result-list,
 .compact-list {
   display: grid;
@@ -150,6 +151,7 @@ select {
 
 .player-card,
 .preset-card,
+.preset-color-choice,
 .result-row,
 .leaderboard-list li {
   display: grid;
@@ -189,10 +191,67 @@ select {
   align-items: center;
 }
 
+.preset-card:hover,
+.preset-card:focus {
+  border-color: rgba(57, 217, 138, 0.55);
+}
+
 .preset-actions {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+}
+
+.mini-swatch-row {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.mini-swatch {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.preset-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 0.7fr);
+  gap: 1rem;
+}
+
+.preset-detail-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.preset-color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.preset-color-choice {
+  color: var(--text);
+}
+
+.preset-color-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
+  opacity: 0;
+}
+
+.preset-color-choice.is-selected,
+.preset-color-choice:has(input:checked) {
+  border-color: var(--accent);
+}
+
+.preset-color-meta {
+  margin-top: 1rem;
 }
 
 .danger-text {
@@ -1182,7 +1241,8 @@ dd {
   .profile-grid,
   .results-layout,
   .leaderboard-grid,
-  .player-page-list {
+  .player-page-list,
+  .preset-detail-layout {
     grid-template-columns: 1fr;
   }
 

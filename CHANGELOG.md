@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.13 - 2026-05-06
+
+- Added hidden registered-user tracking through Supabase.
+- Reworked preset selection from a modal into dedicated preset list and detail pages.
+- Added editable custom preset detail fields, including colors.
+- Added duplicate checks for custom preset names and matching rule/color configurations.
+- Switched app release naming to the `v1.x` scheme.
+
 ## 0.3.0 - 2026-05-05
 
 - Added Supabase-backed shared storage support for players, custom presets, and results.

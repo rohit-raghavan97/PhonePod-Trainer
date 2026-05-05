@@ -1,4 +1,4 @@
-const cacheName = "reflex-v13";
+const cacheName = "reflex-v1.13";
 const assets = ["./", "./index.html", "./styles.css", "./app.js", "./backend-config.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./logo-option-orbit.svg", "./logo-option-strike.svg"];
 
 self.addEventListener("install", (event) => {

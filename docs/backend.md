@@ -6,6 +6,7 @@ Reflex uses Supabase for shared global data. Without Supabase config, it falls b
 
 The schema is in `supabase-schema.sql` and creates:
 
+- `app_users`
 - `players`
 - `custom_presets`
 - `results`
@@ -32,6 +33,12 @@ window.REFLEX_SUPABASE_CONFIG = {
 
 Never put a Supabase secret key or service-role key in this frontend app.
 
+## Updating An Existing Backend
+
+For the `v1.13` update, run `supabase-v1.13-migration.sql` in the Supabase SQL Editor. It adds hidden app-user tracking and database-level duplicate protection for custom preset names/rules.
+
 ## Current Security Model
 
-The current prototype intentionally allows anyone with the app link to read and write shared players, custom presets, and results. Before a public launch beyond a trusted friend group, add authentication and tighten the RLS policies.
+The current prototype intentionally allows anyone with the app link to read and write shared players, custom presets, and results. Registered app users are written to `app_users` for owner-side usage tracking, but the app does not read or display that table.
+
+Before a public launch beyond a trusted friend group, add authentication and tighten the RLS policies.

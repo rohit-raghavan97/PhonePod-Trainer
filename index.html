@@ -245,6 +245,42 @@
         <div class="player-list player-page-list" id="playerList"></div>
       </section>
 
+      <section class="app-page" id="presetsPage">
+        <div class="section-heading page-heading">
+          <div>
+            <p class="eyebrow">Presets</p>
+            <h1>Choose a drill setup</h1>
+          </div>
+          <button class="secondary-button compact-button nav-button" data-page="play" type="button">Back to setup</button>
+        </div>
+        <div class="preset-page-list" id="presetPageList"></div>
+      </section>
+
+      <section class="app-page" id="presetDetailPage">
+        <div class="section-heading page-heading">
+          <div>
+            <p class="eyebrow" id="presetDetailType">Preset</p>
+            <h1 id="presetDetailTitle">Preset details</h1>
+          </div>
+          <button class="secondary-button compact-button" id="backToPresetsButton" type="button">Back to presets</button>
+        </div>
+        <div class="preset-detail-layout">
+          <section class="home-panel">
+            <div class="section-heading">
+              <h2>Rules and timing</h2>
+              <span class="status-pill" id="presetDetailLock">Default</span>
+            </div>
+            <form class="preset-detail-form" id="presetDetailForm"></form>
+            <p class="status-note" id="presetDetailStatus" aria-live="polite"></p>
+          </section>
+          <section class="home-panel">
+            <h2>Color setup</h2>
+            <div class="preset-color-grid" id="presetDetailColors"></div>
+            <dl class="preset-color-meta" id="presetColorMeta"></dl>
+          </section>
+        </div>
+      </section>
+
       <section class="app-page" id="leaderboardsPage">
         <div class="guide-heading">
           <p class="eyebrow">Leaderboards</p>
@@ -329,28 +365,6 @@
         <div class="form-actions">
           <button class="secondary-button" value="cancel" type="button" id="cancelPlayerButton">Cancel</button>
           <button class="primary-button" type="submit">Save player</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog class="modal wide-modal" id="presetDialog">
-      <div class="modal-card">
-        <div class="section-heading">
-          <h2>Choose preset</h2>
-          <button class="text-button" id="closePresetDialogButton" type="button">Close</button>
-        </div>
-        <div class="preset-picker" id="presetPicker"></div>
-      </div>
-    </dialog>
-
-    <dialog class="modal" id="savePresetDialog">
-      <form method="dialog" id="customPresetForm" class="modal-card">
-        <h2>Save custom preset</h2>
-        <input type="hidden" id="editingPresetId" />
-        <label>Preset name <input id="customPresetName" required placeholder="My reaction drill" /></label>
-        <div class="form-actions">
-          <button class="secondary-button" id="cancelCustomPresetButton" type="button">Cancel</button>
-          <button class="primary-button" id="customPresetSubmitButton" type="submit">Save preset</button>
         </div>
       </form>
     </dialog>

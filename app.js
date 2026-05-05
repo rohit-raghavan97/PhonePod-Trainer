@@ -64,12 +64,14 @@ const defaultPresets = [
 
 const storageKeys = {
   user: "reflex:user",
+  deviceId: "reflex:deviceId",
   players: "reflex:players",
   customPresets: "reflex:customPresets",
   history: "reflex:history"
 };
 
 const backendTables = {
+  appUsers: "app_users",
   players: "players",
   customPresets: "custom_presets",
   results: "results"
@@ -103,9 +105,11 @@ const state = {
   tickTimer: null,
   wakeLock: null,
   user: null,
+  deviceId: "",
   players: [],
   customPresets: [],
   history: [],
+  selectedPresetId: "",
   editingPresetId: null,
   editingPresetName: "",
   backend: {
@@ -253,10 +257,13 @@ function bindControls() {
   $("playersAddPlayerButton").addEventListener("click", openPlayerDialog);
   $("cancelPlayerButton").addEventListener("click", () => $("playerDialog").close());
   $("playerForm").addEventListener("submit", savePlayer);
-  $("closePresetDialogButton").addEventListener("click", () => $("presetDialog").close());
   $("savePresetButton").addEventListener("click", openSavePresetDialog);
-  $("cancelCustomPresetButton").addEventListener("click", () => $("savePresetDialog").close());
-  $("customPresetForm").addEventListener("submit", saveCustomPreset);
+  $("backToPresetsButton").addEventListener("click", () => showPage("presets"));
+  $("presetDetailForm").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-apply-detail-preset]");
+    if (button) applyPreset(button.dataset.applyDetailPreset);
+  });
+  $("presetDetailForm").addEventListener("submit", saveCustomPreset);
   $("historyList").addEventListener("click", (event) => {
     const button = event.target.closest("[data-result-id]");
     if (button) selectResult(button.dataset.resultId);
@@ -272,6 +279,8 @@ function showPage(page) {
   }
   if (page === "players") renderPlayers();
   if (page === "leaderboards") renderLeaderboards();
+  if (page === "presets") renderPresets();
+  if (page === "presetDetail" && state.selectedPresetId) renderPresetDetail();
 }
 
 function toggleMenu() {
@@ -296,6 +305,8 @@ function autoJoinFromUrl() {
 
 async function loadAppData() {
   state.user = JSON.parse(localStorage.getItem(storageKeys.user) || "null");
+  state.deviceId = localStorage.getItem(storageKeys.deviceId) || uid("device");
+  localStorage.setItem(storageKeys.deviceId, state.deviceId);
   state.players = JSON.parse(localStorage.getItem(storageKeys.players) || "[]");
   state.customPresets = JSON.parse(localStorage.getItem(storageKeys.customPresets) || "[]");
   state.history = JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
@@ -307,6 +318,7 @@ async function loadAppData() {
     state.players = [{ id: uid("player"), name: state.user.fullName, note: "Primary" }];
     savePlayers();
   }
+  if (state.user) trackAppUser().catch(() => {});
 }
 
 function createBackendClient() {
@@ -355,6 +367,15 @@ async function saveCustomPresets() {
   if (error) throw error;
 }
 
+async function trackAppUser() {
+  if (!state.backend.ready || !state.user?.fullName || !state.deviceId) return;
+  await state.backend.client.from(backendTables.appUsers).upsert({
+    device_id: state.deviceId,
+    full_name: state.user.fullName,
+    last_seen_at: new Date().toISOString()
+  }, { onConflict: "device_id" });
+}
+
 function showRegistrationIfNeeded() {
   if (!state.user) $("registrationDialog").showModal();
 }
@@ -365,6 +386,7 @@ async function saveRegistration(event) {
   if (!fullName) return;
   state.user = { fullName };
   localStorage.setItem(storageKeys.user, JSON.stringify(state.user));
+  await trackAppUser().catch(() => {});
   if (!state.players.some((player) => normalizeName(player.name) === normalizeName(fullName))) {
     state.players.push({ id: uid("player"), name: fullName, note: "Primary" });
   }
@@ -381,6 +403,7 @@ async function saveProfile(event) {
   const previous = state.user?.fullName;
   state.user = { fullName };
   localStorage.setItem(storageKeys.user, JSON.stringify(state.user));
+  await trackAppUser().catch(() => {});
   if (previous && state.players[0]?.name === previous) {
     state.players[0].name = fullName;
     await savePlayers().catch(() => {});
@@ -1301,70 +1324,170 @@ function loadPreset() {
 
 function openPresetPicker() {
   renderPresets();
-  $("presetDialog").showModal();
+  showPage("presets");
 }
 
 function renderPresets() {
   const allPresets = [...defaultPresets, ...state.customPresets];
   const cards = allPresets.map((preset) => presetCard(preset)).join("");
-  if ($("presetPicker")) $("presetPicker").innerHTML = cards;
-  document.querySelectorAll("[data-load-preset]").forEach((button) => {
-    button.onclick = () => applyPreset(button.dataset.loadPreset);
+  if ($("presetPageList")) $("presetPageList").innerHTML = cards;
+  document.querySelectorAll("[data-open-preset]").forEach((button) => {
+    button.onclick = (event) => {
+      event.stopPropagation();
+      openPresetDetail(button.dataset.openPreset);
+    };
   });
-  document.querySelectorAll("[data-edit-preset]").forEach((button) => {
-    button.onclick = () => editCustomPreset(button.dataset.editPreset);
+  document.querySelectorAll("[data-load-preset]").forEach((button) => {
+    button.onclick = (event) => {
+      event.stopPropagation();
+      applyPreset(button.dataset.loadPreset);
+    };
   });
   document.querySelectorAll("[data-delete-preset]").forEach((button) => {
-    button.onclick = () => deleteCustomPreset(button.dataset.deletePreset);
+    button.onclick = (event) => {
+      event.stopPropagation();
+      deleteCustomPreset(button.dataset.deletePreset);
+    };
   });
 }
 
 function presetCard(preset, compact = false) {
   const config = preset.config;
   const meta = `${titleForMode(config.activityMode)} - ${config.durationMode} - ${config.durationMode === "hits" ? `${config.hitTarget} hits` : `${config.timeLimit}s`}`;
-  const customActions = preset.type === "custom" && !compact
-    ? `<button class="text-button" data-edit-preset="${preset.id}" type="button">Edit</button><button class="text-button danger-text" data-delete-preset="${preset.id}" type="button">Delete</button>`
+  const colorDots = config.enabledColors.map((name) => {
+    const color = colors.find((item) => item.name === name);
+    return `<span class="mini-swatch" title="${escapeHtml(name)}" style="background:${color?.value || "#fff"}"></span>`;
+  }).join("");
+  const deleteAction = preset.type === "custom" && !compact
+    ? `<button class="text-button danger-text" data-delete-preset="${preset.id}" type="button">Delete</button>`
     : "";
   return `
-    <article class="preset-card">
+    <article class="preset-card selectable-card" data-open-preset="${preset.id}" role="button" tabindex="0">
       <div>
         <strong>${escapeHtml(preset.name)}</strong>
         <span>${escapeHtml(preset.description || meta)}</span>
         <small>${escapeHtml(meta)}</small>
+        <div class="mini-swatch-row">${colorDots}</div>
       </div>
       <div class="preset-actions">
-        <button class="secondary-button compact-button" data-load-preset="${preset.id}" type="button">Use</button>
-        ${customActions}
+        <button class="secondary-button compact-button" data-open-preset="${preset.id}" type="button">Details</button>
+        ${deleteAction}
       </div>
     </article>
   `;
 }
 
+function openPresetDetail(id) {
+  state.selectedPresetId = id;
+  renderPresetDetail();
+  showPage("presetDetail");
+}
+
+function renderPresetDetail() {
+  const preset = getPresetById(state.selectedPresetId) || defaultPresets[0];
+  if (!preset) return;
+  state.selectedPresetId = preset.id;
+  const editable = preset.type === "custom";
+  $("presetDetailType").textContent = editable ? "Custom preset" : "Default preset";
+  $("presetDetailTitle").textContent = preset.name;
+  $("presetDetailLock").textContent = editable ? "Editable" : "Locked";
+  $("presetDetailForm").innerHTML = presetDetailForm(preset, editable);
+  $("presetDetailColors").innerHTML = colors.map((color) => {
+    const selected = preset.config.enabledColors.includes(color.name);
+    return `
+      <label class="preset-color-choice ${selected ? "is-selected" : ""}">
+        <input data-preset-color="${color.name}" type="checkbox" ${selected ? "checked" : ""} ${editable ? "" : "disabled"} />
+        <span class="color-swatch" style="background:${color.value}"></span>
+        ${color.name}
+      </label>
+    `;
+  }).join("");
+  $("presetColorMeta").innerHTML = `
+    <dt>Home base</dt><dd>${escapeHtml(preset.config.homeBaseColor)}</dd>
+    <dt>Focus target</dt><dd>${escapeHtml(preset.config.focusTargetColor)}</dd>
+    <dt>Distractors</dt><dd>${preset.config.distractorCount}</dd>
+  `;
+  $("presetDetailStatus").textContent = "";
+}
+
+function presetDetailForm(preset, editable) {
+  const disabled = editable ? "" : "disabled";
+  const config = preset.config;
+  return `
+    <input type="hidden" id="detailPresetId" value="${escapeHtml(preset.id)}" />
+    <label>Preset name <input id="detailPresetName" value="${escapeHtml(preset.name)}" ${disabled} required /></label>
+    <label>Activity ${detailSelect("detailActivityMode", config.activityMode, [
+      ["random", "Random Reaction"], ["focus", "Focus"], ["sequence", "Sequence"], ["homeBase", "Home Base"]
+    ], disabled)}</label>
+    <div class="two-col">
+      <label>Duration ${detailSelect("detailDurationMode", config.durationMode, [["timeout", "Timeout"], ["hits", "Hit target"], ["both", "Hit or timeout"]], disabled)}</label>
+      <label>Lights out ${detailSelect("detailLightsOutMode", config.lightsOutMode, [["hit", "Hit"], ["timeout", "Timeout"], ["both", "Hit or timeout"]], disabled)}</label>
+    </div>
+    <div class="two-col">
+      <label>Time limit <input id="detailTimeLimit" type="number" min="5" max="900" value="${config.timeLimit}" ${disabled} /></label>
+      <label>Hit target <input id="detailHitTarget" type="number" min="1" max="999" value="${config.hitTarget}" ${disabled} /></label>
+    </div>
+    <div class="two-col">
+      <label>Light timeout <input id="detailLightTimeout" type="number" min="0.2" max="30" step="0.1" value="${config.lightTimeout}" ${disabled} /></label>
+      <label>Delay ${detailSelect("detailDelayMode", config.delayMode, [["none", "None"], ["fixed", "Fixed"], ["random", "Random"]], disabled)}</label>
+    </div>
+    <div class="two-col">
+      <label>Fixed delay <input id="detailFixedDelay" type="number" min="0" max="20" step="0.1" value="${config.fixedDelay}" ${disabled} /></label>
+      <label>Random delay max <input id="detailRandomDelayMax" type="number" min="0" max="20" step="0.1" value="${config.randomDelayMax}" ${disabled} /></label>
+    </div>
+    <div class="two-col">
+      <label>Cycles <input id="detailCycles" type="number" min="1" max="20" value="${config.cycles}" ${disabled} /></label>
+      <label>Rest seconds <input id="detailRestSeconds" type="number" min="0" max="300" value="${config.restSeconds}" ${disabled} /></label>
+    </div>
+    <div class="two-col">
+      <label>Focus strikes <input id="detailStrikeLimit" type="number" min="1" max="20" value="${config.strikeLimit}" ${disabled} /></label>
+      <label>Sequence steps <input id="detailSequenceSteps" type="number" min="2" max="24" value="${config.sequenceSteps}" ${disabled} /></label>
+    </div>
+    <div class="two-col">
+      <label>Home base ${detailSelect("detailHomeBaseColor", config.homeBaseColor, colors.map((color) => [color.name, color.name]), disabled)}</label>
+      <label>Focus target ${detailSelect("detailFocusTargetColor", config.focusTargetColor, colors.map((color) => [color.name, color.name]), disabled)}</label>
+    </div>
+    <label>Distracting colors ${detailSelect("detailDistractorCount", String(config.distractorCount), [["1", "1 color"], ["2", "2 colors"], ["3", "3 colors"], ["4", "4 colors"]], disabled)}</label>
+    <div class="form-actions">
+      <button class="primary-button" data-apply-detail-preset="${preset.id}" type="button">Use preset</button>
+      ${editable ? `<button class="secondary-button" type="submit">Save changes</button>` : ""}
+    </div>
+  `;
+}
+
+function detailSelect(id, value, options, disabled) {
+  return `<select id="${id}" ${disabled}>${options.map(([optionValue, label]) => `<option value="${optionValue}" ${String(value) === String(optionValue) ? "selected" : ""}>${label}</option>`).join("")}</select>`;
+}
+
 function applyPreset(id) {
-  const preset = [...defaultPresets, ...state.customPresets].find((item) => item.id === id);
+  const preset = getPresetById(id);
   if (!preset) return;
   const playerName = $("playerName")?.value || state.config.playerName;
   writeConfig({ ...preset.config, playerName });
   clearPresetEditState();
-  if ($("presetDialog").open) $("presetDialog").close();
   showPage("play");
   setPresetStatus(`${preset.name} loaded.`);
 }
 
 function openSavePresetDialog() {
-  $("editingPresetId").value = state.editingPresetId || "";
-  $("customPresetName").value = state.editingPresetName || "";
-  $("customPresetSubmitButton").textContent = state.editingPresetId ? "Update preset" : "Save preset";
-  $("savePresetDialog").showModal();
+  state.selectedPresetId = "";
+  showPage("presetDetail");
+  renderNewPresetDetail();
 }
 
 async function saveCustomPreset(event) {
   event.preventDefault();
-  const id = $("editingPresetId").value || uid("preset");
-  const name = $("customPresetName").value.trim();
+  const id = $("detailPresetId").value || uid("preset");
+  const name = cleanName($("detailPresetName").value);
   if (!name) return;
-  const config = { ...readConfig(), presetId: id };
+  const config = readPresetDetailConfig(id);
+  if (!config) return;
   const existing = state.customPresets.findIndex((preset) => preset.id === id);
+  const duplicate = findDuplicatePreset(name, config, id);
+  if (duplicate) {
+    $("presetDetailStatus").textContent = duplicate;
+    return;
+  }
   const previousPresets = [...state.customPresets];
   const preset = { id, type: "custom", name, description: "Custom game", config };
   if (existing >= 0) state.customPresets[existing] = preset;
@@ -1373,26 +1496,32 @@ async function saveCustomPreset(event) {
     await saveCustomPresets();
   } catch {
     state.customPresets = previousPresets;
+    localStorage.setItem(storageKeys.customPresets, JSON.stringify(state.customPresets));
     setPresetStatus(`${name} could not be saved globally. Try again.`);
     return;
   }
   state.config.presetId = id;
   clearPresetEditState();
-  $("savePresetDialog").close();
-  setPresetStatus(existing >= 0 ? `${name} updated.` : `${name} saved.`);
+  state.selectedPresetId = id;
   renderPresets();
+  renderPresetDetail();
+  $("presetDetailStatus").textContent = existing >= 0 ? `${name} updated.` : `${name} saved.`;
 }
 
-function editCustomPreset(id) {
-  const preset = state.customPresets.find((item) => item.id === id);
-  if (!preset) return;
-  writeConfig(preset.config);
-  $("presetDialog").close();
-  state.editingPresetId = preset.id;
-  state.editingPresetName = preset.name;
-  $("savePresetButton").textContent = "Update custom preset";
-  setPresetStatus(`Editing ${preset.name}. Change any setup field, then update the custom preset.`);
-  showPage("play");
+function renderNewPresetDetail() {
+  const id = uid("preset");
+  state.selectedPresetId = id;
+  const preset = { id, type: "custom", name: "", description: "Custom game", config: { ...readConfig(), presetId: id } };
+  $("presetDetailType").textContent = "New custom preset";
+  $("presetDetailTitle").textContent = "Save custom preset";
+  $("presetDetailLock").textContent = "Editable";
+  $("presetDetailForm").innerHTML = presetDetailForm(preset, true);
+  $("presetDetailColors").innerHTML = colors.map((color) => {
+    const selected = preset.config.enabledColors.includes(color.name);
+    return `<label class="preset-color-choice ${selected ? "is-selected" : ""}"><input data-preset-color="${color.name}" type="checkbox" ${selected ? "checked" : ""} /><span class="color-swatch" style="background:${color.value}"></span>${color.name}</label>`;
+  }).join("");
+  $("presetColorMeta").innerHTML = "";
+  $("presetDetailStatus").textContent = "";
 }
 
 async function deleteCustomPreset(id) {
@@ -1409,10 +1538,62 @@ async function deleteCustomPreset(id) {
 function clearPresetEditState() {
   state.editingPresetId = null;
   state.editingPresetName = "";
-  if ($("editingPresetId")) $("editingPresetId").value = "";
-  if ($("customPresetName")) $("customPresetName").value = "";
   if ($("savePresetButton")) $("savePresetButton").textContent = "Save custom preset";
-  if ($("customPresetSubmitButton")) $("customPresetSubmitButton").textContent = "Save preset";
+}
+
+function getPresetById(id) {
+  return [...defaultPresets, ...state.customPresets].find((item) => item.id === id);
+}
+
+function readPresetDetailConfig(id) {
+  const enabledColors = [...document.querySelectorAll("[data-preset-color]:checked")].map((input) => input.dataset.presetColor);
+  if (!enabledColors.length) {
+    $("presetDetailStatus").textContent = "Choose at least one active color.";
+    return null;
+  }
+  return {
+    ...defaults,
+    presetId: id,
+    activityMode: $("detailActivityMode").value,
+    playerName: state.config.playerName,
+    durationMode: $("detailDurationMode").value,
+    lightsOutMode: $("detailLightsOutMode").value,
+    timeLimit: clamp(Number($("detailTimeLimit").value), 5, 900),
+    hitTarget: clamp(Number($("detailHitTarget").value), 1, 999),
+    lightTimeout: clamp(Number($("detailLightTimeout").value), 0.2, 30),
+    delayMode: $("detailDelayMode").value,
+    fixedDelay: clamp(Number($("detailFixedDelay").value), 0, 20),
+    randomDelayMax: clamp(Number($("detailRandomDelayMax").value), 0, 20),
+    cycles: clamp(Math.round(Number($("detailCycles").value)), 1, 20),
+    restSeconds: clamp(Number($("detailRestSeconds").value), 0, 300),
+    strikeLimit: clamp(Math.round(Number($("detailStrikeLimit").value)), 1, 20),
+    sequenceSteps: clamp(Math.round(Number($("detailSequenceSteps").value)), 2, 24),
+    homeBaseColor: $("detailHomeBaseColor").value,
+    focusTargetColor: $("detailFocusTargetColor").value,
+    distractorCount: clamp(Math.round(Number($("detailDistractorCount").value)), 1, 4),
+    enabledColors
+  };
+}
+
+function findDuplicatePreset(name, config, currentId) {
+  const allPresets = [...defaultPresets, ...state.customPresets].filter((preset) => preset.id !== currentId);
+  if (allPresets.some((preset) => normalizeName(preset.name) === normalizeName(name))) {
+    return `${name} already exists. Choose a different preset name.`;
+  }
+  const signature = presetConfigSignature(config);
+  const match = allPresets.find((preset) => presetConfigSignature(preset.config) === signature);
+  return match ? `This setup already matches ${match.name}. Change at least one rule or color.` : "";
+}
+
+function presetConfigSignature(config) {
+  const comparable = { ...config };
+  delete comparable.presetId;
+  delete comparable.playerName;
+  comparable.enabledColors = [...(comparable.enabledColors || [])].sort();
+  return JSON.stringify(Object.keys(comparable).sort().reduce((acc, key) => {
+    acc[key] = comparable[key];
+    return acc;
+  }, {}));
 }
 
 function setPresetStatus(message) {

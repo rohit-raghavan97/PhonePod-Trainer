@@ -10,7 +10,8 @@
 ## Presets
 
 - Default presets are standardized and can be used for fair leaderboards.
-- Custom presets can be saved, loaded, edited across all setup fields, and deleted.
+- Custom presets can be saved, loaded, edited across all setup fields, and deleted from the preset detail page.
+- Duplicate custom preset names and duplicate rule/color configurations are blocked.
 - When Supabase is configured, custom presets are shared globally.
 
 ## Players
@@ -18,6 +19,11 @@
 - Players are stored as a roster and sorted alphabetically.
 - Duplicate names are blocked using a case-insensitive, whitespace-normalized check.
 - When Supabase is configured, players are shared globally.
+
+## App Users
+
+- Registered user names and device IDs are stored in Supabase for owner-side usage tracking.
+- User tracking is not shown anywhere in the app UI.
 
 ## Results
 

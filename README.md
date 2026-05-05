@@ -6,7 +6,7 @@ Live app: https://rohit-raghavan97.github.io/Reflex/
 
 ## Current Version
 
-`0.3.0`
+`v1.13`
 
 ## Main Features
 
@@ -15,6 +15,7 @@ Live app: https://rohit-raghavan97.github.io/Reflex/
 - Default presets for comparable leaderboard attempts.
 - Custom presets with full setup editing.
 - Player roster with duplicate-name checks.
+- Hidden app-user tracking through Supabase.
 - Results history with attempt analytics and configuration details.
 - Multi-device rooms using PeerJS for host and pod phones.
 - Optional Supabase backend for shared players, custom presets, and results.

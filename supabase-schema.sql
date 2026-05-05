@@ -8,6 +8,13 @@ create table if not exists public.players (
 create unique index if not exists players_name_unique
 on public.players (lower(regexp_replace(trim(name), '\s+', ' ', 'g')));
 
+create table if not exists public.app_users (
+  device_id text primary key,
+  full_name text not null,
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now()
+);
+
 create table if not exists public.custom_presets (
   id text primary key,
   name text not null,
@@ -16,6 +23,12 @@ create table if not exists public.custom_presets (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create unique index if not exists custom_presets_name_unique
+on public.custom_presets (lower(regexp_replace(trim(name), '\s+', ' ', 'g')));
+
+create unique index if not exists custom_presets_rules_unique
+on public.custom_presets (md5((config - 'presetId' - 'playerName')::text));
 
 create table if not exists public.results (
   id text primary key,
@@ -37,6 +50,7 @@ create table if not exists public.results (
 );
 
 alter table public.players enable row level security;
+alter table public.app_users enable row level security;
 alter table public.custom_presets enable row level security;
 alter table public.results enable row level security;
 
@@ -50,6 +64,15 @@ with check (true);
 
 create policy "players can be updated by everyone"
 on public.players for update
+using (true)
+with check (true);
+
+create policy "app users can be inserted by everyone"
+on public.app_users for insert
+with check (true);
+
+create policy "app users can be updated by everyone"
+on public.app_users for update
 using (true)
 with check (true);
 
