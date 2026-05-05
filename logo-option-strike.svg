@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Reflex strike logo option">
+  <rect width="512" height="512" rx="112" fill="#101418"/>
+  <path d="M118 334c92 84 184 84 276 0" fill="none" stroke="#33404b" stroke-width="22" stroke-linecap="round"/>
+  <path d="M138 266c78 62 158 62 236 0" fill="none" stroke="#39d98a" stroke-width="18" stroke-linecap="round"/>
+  <path d="M198 70h156l-58 126h80L210 442l32-158h-84z" fill="#21d4d4"/>
+  <path d="M198 70h156l-58 126h80L210 442l32-158h-84z" fill="#f5f7f9" opacity=".18"/>
+</svg>

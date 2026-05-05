@@ -1,11 +1,11 @@
 {
-  "name": "PhonePod Trainer",
-  "short_name": "PhonePod",
+  "name": "Reflex",
+  "short_name": "Reflex",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#101418",
   "theme_color": "#101418",
-  "description": "Single-phone reaction light trainer inspired by pod-based training workflows.",
+  "description": "Reaction training, multi-phone pods, presets, and leaderboards.",
   "icons": [
     {
       "src": "./icon-192.png",

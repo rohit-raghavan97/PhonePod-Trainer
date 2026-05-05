@@ -49,6 +49,302 @@ select {
   backdrop-filter: blur(16px);
 }
 
+.app-page {
+  display: none;
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 4rem;
+}
+
+.app-page.is-active {
+  display: block;
+}
+
+.nav-button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.home-grid,
+.profile-grid,
+.results-layout,
+.leaderboard-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-grid {
+  grid-template-columns: 1.25fr 1fr;
+}
+
+.profile-grid,
+.results-layout {
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+}
+
+.leaderboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-hero,
+.home-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(23, 29, 34, 0.88);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.home-hero {
+  display: grid;
+  align-content: space-between;
+  min-height: 24rem;
+}
+
+.home-hero h1,
+.guide-heading h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 1;
+}
+
+.home-hero p {
+  max-width: 42rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.home-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.compact-button {
+  min-height: 2.1rem;
+  padding: 0 0.7rem;
+  font-size: 0.85rem;
+}
+
+.player-list,
+.preset-list,
+.preset-picker,
+.result-list,
+.compact-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.player-card,
+.preset-card,
+.result-row,
+.leaderboard-list li {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #10161b;
+  padding: 0.8rem;
+}
+
+.player-card span,
+.preset-card span,
+.preset-card small,
+.result-row span,
+.result-row small,
+.leaderboard-list span {
+  color: var(--muted);
+}
+
+.preset-card {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.preset-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
+.result-row {
+  width: 100%;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.result-row.is-selected {
+  border-color: var(--accent);
+}
+
+.detail-panel,
+.detail-stats {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.detail-hero {
+  border-radius: 8px;
+  background: #10161b;
+  padding: 1rem;
+}
+
+.detail-hero p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+}
+
+.detail-stats {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.detail-stats div {
+  border-radius: 8px;
+  background: #10161b;
+  padding: 0.8rem;
+}
+
+.detail-stats strong {
+  display: block;
+  font-size: 1.35rem;
+}
+
+.detail-stats span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stacked-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.logo-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.logo-options article {
+  display: grid;
+  gap: 0.4rem;
+  place-items: center;
+  border-radius: 8px;
+  background: #10161b;
+  padding: 0.7rem;
+}
+
+.logo-options img {
+  width: 4rem;
+  height: 4rem;
+}
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.8rem;
+  background: #101418;
+  animation: splashAway 900ms ease 850ms forwards;
+}
+
+.splash-screen img {
+  width: 6.4rem;
+  height: 6.4rem;
+  animation: pulseLogo 900ms ease-in-out infinite alternate;
+}
+
+.splash-screen strong {
+  font-size: 1.45rem;
+}
+
+.modal {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.modal-card {
+  display: grid;
+  gap: 0.85rem;
+  width: min(92vw, 420px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: #171d22;
+  padding: 1rem;
+}
+
+.wide-modal .modal-card {
+  width: min(94vw, 760px);
+}
+
+.modal-logo {
+  width: 4.4rem;
+  height: 4.4rem;
+}
+
+.status-note {
+  min-height: 1.2rem;
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+body.is-playing {
+  overscroll-behavior: none;
+}
+
+body.is-playing .home-header {
+  display: none;
+}
+
+body.is-playing .app-page {
+  width: 100%;
+  padding: 0;
+}
+
+body.is-playing .training-stage {
+  min-height: 100svh;
+}
+
+body.is-playing .app-shell {
+  display: block;
+  min-height: 100svh;
+}
+
+body.is-playing .control-panel {
+  display: none;
+}
+
+body.is-playing .pod-screen {
+  min-height: 58svh;
+  touch-action: none;
+}
+
 .brand-mark,
 .site-nav a {
   color: var(--text);
@@ -76,7 +372,8 @@ select {
   gap: 0.25rem;
 }
 
-.site-nav a {
+.site-nav a,
+.site-nav button {
   min-height: 2.25rem;
   padding: 0.52rem 0.7rem;
   border-radius: 8px;
@@ -84,7 +381,9 @@ select {
   font-size: 0.9rem;
 }
 
-.site-nav a:hover {
+.site-nav a:hover,
+.site-nav button:hover,
+.site-nav button.is-active {
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
 }
@@ -94,8 +393,6 @@ select {
   grid-template-columns: minmax(320px, 1fr) minmax(320px, 420px);
   gap: 1rem;
   min-height: calc(100vh - 4.25rem);
-  padding: 1rem;
-  scroll-margin-top: 4.25rem;
 }
 
 .training-stage,
@@ -472,10 +769,14 @@ dd {
 }
 
 .guide-section {
-  width: min(1180px, calc(100% - 2rem));
+  width: 100%;
   margin: 0 auto;
-  padding: 4rem 0 0;
+  padding: 3rem 0 0;
   scroll-margin-top: 4.25rem;
+}
+
+.guide-section.is-first {
+  padding-top: 0;
 }
 
 .guide-section:last-of-type {
@@ -665,6 +966,24 @@ dd {
   }
 }
 
+@keyframes splashAway {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes pulseLogo {
+  from {
+    transform: scale(0.96);
+    filter: drop-shadow(0 0 14px rgba(57, 217, 138, 0.35));
+  }
+  to {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 32px rgba(57, 217, 138, 0.7));
+  }
+}
+
 @media (max-width: 860px) {
   .home-header {
     align-items: flex-start;
@@ -680,6 +999,13 @@ dd {
   .app-shell {
     grid-template-columns: 1fr;
     padding: 0;
+  }
+
+  .home-grid,
+  .profile-grid,
+  .results-layout,
+  .leaderboard-grid {
+    grid-template-columns: 1fr;
   }
 
   .training-stage,

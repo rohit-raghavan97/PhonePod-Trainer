@@ -4,423 +4,355 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#101418" />
-    <title>PhonePod Trainer</title>
+    <title>Reflex</title>
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div class="splash-screen" id="splashScreen" aria-hidden="true">
+      <img src="./icon.svg" alt="" />
+      <strong>Reflex</strong>
+    </div>
+
     <header class="home-header">
-      <a class="brand-mark" href="#trainer" aria-label="PhonePod Trainer home">
+      <button class="brand-mark nav-button" data-page="home" type="button" aria-label="Reflex home">
         <span class="brand-dot"></span>
-        PhonePod Trainer
-      </a>
-      <nav class="site-nav" aria-label="Page sections">
-        <a href="#trainer">Trainer</a>
-        <a href="#tutorial">Tutorial</a>
-        <a href="#features">Features</a>
-        <a href="#use-cases">Use cases</a>
+        Reflex
+      </button>
+      <nav class="site-nav" aria-label="App pages">
+        <button class="nav-button is-active" data-page="home" type="button">Home</button>
+        <button class="nav-button" data-page="play" type="button">Play</button>
+        <button class="nav-button" data-page="results" type="button">Results</button>
+        <button class="nav-button" data-page="guide" type="button">Guide</button>
+        <button class="nav-button" data-page="profile" type="button">Profile</button>
       </nav>
     </header>
 
-    <main class="app-shell" id="trainer">
-      <section class="training-stage" aria-label="Training screen">
-        <div class="status-bar">
-          <div>
-            <p class="eyebrow">PhonePod</p>
-            <h1 id="modeTitle">Random Reaction</h1>
-          </div>
-          <button class="icon-button" id="wakeLockButton" type="button" title="Keep screen awake">Awake</button>
-        </div>
+    <main>
+      <section class="app-page is-active" id="homePage">
+        <div class="home-grid">
+          <section class="home-hero">
+            <div>
+              <p class="eyebrow">Reflex trainer</p>
+              <h1>Reaction drills with the phones you already have.</h1>
+              <p>Run solo drills, connect phones as pods, track results, and compare players on standard presets.</p>
+            </div>
+            <div class="home-actions">
+              <button class="primary-button nav-button" data-page="play" type="button">Start training</button>
+              <button class="secondary-button" id="homeHostButton" type="button">Host multi-device room</button>
+            </div>
+          </section>
 
-        <button class="pod-screen is-idle" id="podButton" type="button" aria-label="Tap active color">
-          <span id="podLabel">Ready</span>
-          <span class="pod-subcopy" id="podSubcopy">Configure, start, tap.</span>
-        </button>
+          <section class="home-panel">
+            <div class="section-heading">
+              <h2>Players</h2>
+              <button class="secondary-button compact-button" id="openPlayerButton" type="button">Add Player</button>
+            </div>
+            <div class="player-list" id="playerList"></div>
+          </section>
 
-        <section class="stage-summary" id="stageSummary" aria-live="polite"></section>
+          <section class="home-panel">
+            <div class="section-heading">
+              <h2>Default games</h2>
+              <button class="text-button nav-button" data-page="leaderboards" type="button">Leaderboards</button>
+            </div>
+            <div class="preset-list compact-list" id="homePresetList"></div>
+          </section>
 
-        <div class="metric-strip" aria-label="Live stats">
-          <div>
-            <span id="hitCount">0</span>
-            <small>Hits</small>
-          </div>
-          <div>
-            <span id="avgReaction">--</span>
-            <small>Avg</small>
-          </div>
-          <div>
-            <span id="remainingValue">--</span>
-            <small>Left</small>
-          </div>
-          <div>
-            <span id="cycleValue">1/1</span>
-            <small>Cycle</small>
-          </div>
-        </div>
-
-        <div class="run-controls">
-          <button class="primary-button" id="startButton" type="button">Start</button>
-          <button class="secondary-button" id="pauseButton" type="button" disabled>Pause</button>
-          <button class="secondary-button" id="resetButton" type="button">Reset</button>
+          <section class="home-panel">
+            <h2>Logo options</h2>
+            <p class="panel-copy">Current icon is selected, with two alternates kept in the repo for easy swapping.</p>
+            <div class="logo-options">
+              <article><img src="./icon.svg" alt="Pulse bolt logo" /><span>Pulse Bolt</span></article>
+              <article><img src="./logo-option-orbit.svg" alt="Orbit logo" /><span>Orbit</span></article>
+              <article><img src="./logo-option-strike.svg" alt="Strike logo" /><span>Strike</span></article>
+            </div>
+          </section>
         </div>
       </section>
 
-      <aside class="control-panel" aria-label="Training controls">
-        <nav class="tabs" aria-label="Sections">
-          <button class="tab is-active" data-tab="setup" type="button">Setup</button>
-          <button class="tab" data-tab="colors" type="button">Colors</button>
-          <button class="tab" data-tab="results" type="button">Results</button>
-          <button class="tab" data-tab="multi" type="button">Multi</button>
-        </nav>
+      <section class="app-page" id="playPage">
+        <div class="app-shell" id="trainer">
+          <section class="training-stage" aria-label="Training screen">
+            <div class="status-bar">
+              <div>
+                <p class="eyebrow">Reflex</p>
+                <h1 id="modeTitle">Random Reaction</h1>
+              </div>
+              <button class="icon-button" id="wakeLockButton" type="button" title="Keep screen awake">Awake</button>
+            </div>
 
-        <form class="panel-page is-active" id="setupPanel">
-          <label>
-            Activity
-            <select id="activityMode">
-              <option value="random">Random Reaction</option>
-              <option value="focus">Focus</option>
-              <option value="sequence">Sequence</option>
-              <option value="homeBase">Home Base</option>
-            </select>
-          </label>
+            <button class="pod-screen is-idle" id="podButton" type="button" aria-label="Tap active color">
+              <span id="podLabel">Ready</span>
+              <span class="pod-subcopy" id="podSubcopy">Configure, start, tap.</span>
+            </button>
 
-          <label>
-            Player
-            <input id="playerName" value="Player 1" maxlength="30" />
-          </label>
+            <section class="stage-summary" id="stageSummary" aria-live="polite"></section>
 
-          <div class="two-col">
-            <label>
-              Duration
-              <select id="durationMode">
-                <option value="timeout">Timeout</option>
-                <option value="hits">Hit target</option>
-                <option value="both">Hit or timeout</option>
-              </select>
-            </label>
-            <label>
-              Lights out
-              <select id="lightsOutMode">
-                <option value="hit">Hit</option>
-                <option value="timeout">Timeout</option>
-                <option value="both">Hit or timeout</option>
-              </select>
-            </label>
-          </div>
+            <div class="metric-strip" aria-label="Live stats">
+              <div><span id="hitCount">0</span><small>Hits</small></div>
+              <div><span id="avgReaction">--</span><small>Avg</small></div>
+              <div><span id="remainingValue">--</span><small>Left</small></div>
+              <div><span id="cycleValue">1/1</span><small>Cycle</small></div>
+            </div>
 
-          <div class="two-col">
-            <label>
-              Time limit
-              <input id="timeLimit" type="number" min="5" max="900" value="45" />
-            </label>
-            <label>
-              Hit target
-              <input id="hitTarget" type="number" min="1" max="999" value="20" />
-            </label>
-          </div>
+            <div class="run-controls">
+              <button class="primary-button" id="startButton" type="button">Start</button>
+              <button class="secondary-button" id="pauseButton" type="button" disabled>Pause</button>
+              <button class="secondary-button" id="resetButton" type="button">Reset</button>
+            </div>
+          </section>
 
-          <div class="two-col">
-            <label>
-              Light timeout
-              <input id="lightTimeout" type="number" min="0.2" max="30" step="0.1" value="2.5" />
-            </label>
-            <label>
-              Delay
-              <select id="delayMode">
-                <option value="none">None</option>
-                <option value="fixed">Fixed</option>
-                <option value="random">Random</option>
-              </select>
-            </label>
-          </div>
+          <aside class="control-panel" aria-label="Training controls">
+            <nav class="tabs" aria-label="Sections">
+              <button class="tab is-active" data-tab="setup" type="button">Setup</button>
+              <button class="tab" data-tab="colors" type="button">Colors</button>
+              <button class="tab" data-tab="multi" type="button">Multi</button>
+            </nav>
 
-          <div class="two-col">
-            <label>
-              Fixed delay
-              <input id="fixedDelay" type="number" min="0" max="20" step="0.1" value="0.4" />
-            </label>
-            <label>
-              Random delay max
-              <input id="randomDelayMax" type="number" min="0" max="20" step="0.1" value="1.5" />
-            </label>
-          </div>
+            <form class="panel-page is-active" id="setupPanel">
+              <div class="section-heading">
+                <h2>Game setup</h2>
+                <button class="secondary-button compact-button" id="loadPresetButton" type="button">Presets</button>
+              </div>
+              <label>
+                Activity
+                <select id="activityMode">
+                  <option value="random">Random Reaction</option>
+                  <option value="focus">Focus</option>
+                  <option value="sequence">Sequence</option>
+                  <option value="homeBase">Home Base</option>
+                </select>
+              </label>
+              <label>
+                Player
+                <select id="playerName"></select>
+              </label>
+              <div class="two-col">
+                <label>
+                  Duration
+                  <select id="durationMode">
+                    <option value="timeout">Timeout</option>
+                    <option value="hits">Hit target</option>
+                    <option value="both">Hit or timeout</option>
+                  </select>
+                </label>
+                <label>
+                  Lights out
+                  <select id="lightsOutMode">
+                    <option value="hit">Hit</option>
+                    <option value="timeout">Timeout</option>
+                    <option value="both">Hit or timeout</option>
+                  </select>
+                </label>
+              </div>
+              <div class="two-col">
+                <label>Time limit <input id="timeLimit" type="number" min="5" max="900" value="45" /></label>
+                <label>Hit target <input id="hitTarget" type="number" min="1" max="999" value="20" /></label>
+              </div>
+              <div class="two-col">
+                <label>Light timeout <input id="lightTimeout" type="number" min="0.2" max="30" step="0.1" value="2.5" /></label>
+                <label>
+                  Delay
+                  <select id="delayMode">
+                    <option value="none">None</option>
+                    <option value="fixed">Fixed</option>
+                    <option value="random">Random</option>
+                  </select>
+                </label>
+              </div>
+              <div class="two-col">
+                <label>Fixed delay <input id="fixedDelay" type="number" min="0" max="20" step="0.1" value="0.4" /></label>
+                <label>Random delay max <input id="randomDelayMax" type="number" min="0" max="20" step="0.1" value="1.5" /></label>
+              </div>
+              <div class="two-col">
+                <label>Cycles <input id="cycles" type="number" min="1" max="20" value="1" /></label>
+                <label>Rest seconds <input id="restSeconds" type="number" min="0" max="300" value="20" /></label>
+              </div>
+              <div class="mode-options" id="modeOptions">
+                <label>Focus strikes <input id="strikeLimit" type="number" min="1" max="20" value="3" /></label>
+                <label>Sequence steps <input id="sequenceSteps" type="number" min="2" max="24" value="6" /></label>
+              </div>
+              <div class="form-actions">
+                <button class="secondary-button" id="savePresetButton" type="button">Save custom preset</button>
+              </div>
+              <p class="status-note" id="presetStatus" aria-live="polite"></p>
+            </form>
 
-          <div class="two-col">
-            <label>
-              Cycles
-              <input id="cycles" type="number" min="1" max="20" value="1" />
-            </label>
-            <label>
-              Rest seconds
-              <input id="restSeconds" type="number" min="0" max="300" value="20" />
-            </label>
-          </div>
+            <section class="panel-page" id="colorsPanel">
+              <div class="color-grid" id="colorGrid" aria-label="Training colors"></div>
+              <label>Home base color <select id="homeBaseColor"></select></label>
+              <label>Focus target color <select id="focusTargetColor"></select></label>
+              <label>
+                Distracting colors
+                <select id="distractorCount">
+                  <option value="1">1 color</option>
+                  <option value="2">2 colors</option>
+                  <option value="3">3 colors</option>
+                  <option value="4">4 colors</option>
+                </select>
+              </label>
+            </section>
 
-          <div class="mode-options" id="modeOptions">
-            <label>
-              Focus strikes
-              <input id="strikeLimit" type="number" min="1" max="20" value="3" />
-            </label>
-            <label>
-              Sequence steps
-              <input id="sequenceSteps" type="number" min="2" max="24" value="6" />
-            </label>
-          </div>
+            <section class="panel-page" id="multiPanel">
+              <div class="result-card">
+                <h2>Multi-device room</h2>
+                <p class="panel-copy">Use this phone as the host, then connect other phones as pod screens with the room link.</p>
+                <div class="form-actions stacked-actions">
+                  <button class="primary-button" id="hostRoomButton" type="button">Host room</button>
+                  <button class="secondary-button" id="leaveRoomButton" type="button">Leave</button>
+                </div>
+                <label>Room code <input id="roomCode" readonly placeholder="Start a room to get a code" /></label>
+                <label>Join link <input id="roomLink" readonly placeholder="Start a room to create a link" /></label>
+                <button class="secondary-button" id="copyRoomLinkButton" type="button">Copy join link</button>
+              </div>
+              <div class="result-card">
+                <h2>Join as pod</h2>
+                <p class="panel-copy">On another phone, paste the host room code or open the join link. Keep that phone unlocked and visible.</p>
+                <label>Host room code <input id="joinRoomCode" placeholder="Example: reflex-ab12cd" /></label>
+                <button class="secondary-button" id="joinRoomButton" type="button">Join room</button>
+              </div>
+              <div class="result-card">
+                <div class="section-heading">
+                  <h2>Connected pods</h2>
+                  <span class="status-pill" id="networkStatus">Solo</span>
+                </div>
+                <ol class="pod-list" id="podList"></ol>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
 
-          <div class="form-actions">
-            <button class="secondary-button" id="savePresetButton" type="button">Save preset</button>
-            <button class="secondary-button" id="loadPresetButton" type="button">Load preset</button>
-          </div>
-        </form>
-
-        <section class="panel-page" id="colorsPanel">
-          <div class="color-grid" id="colorGrid" aria-label="Training colors"></div>
-          <label>
-            Home base color
-            <select id="homeBaseColor"></select>
-          </label>
-          <label>
-            Focus target color
-            <select id="focusTargetColor"></select>
-          </label>
-          <label>
-            Distracting colors
-            <select id="distractorCount">
-              <option value="1">1 color</option>
-              <option value="2">2 colors</option>
-              <option value="3">3 colors</option>
-              <option value="4">4 colors</option>
-            </select>
-          </label>
-        </section>
-
-        <section class="panel-page" id="resultsPanel">
-          <div class="result-card">
-            <h2>Current run</h2>
-            <dl id="currentResults"></dl>
-          </div>
-          <div class="result-card">
+      <section class="app-page" id="resultsPage">
+        <div class="results-layout">
+          <section class="home-panel">
             <div class="section-heading">
-              <h2>History</h2>
+              <h2>Attempt history</h2>
               <button class="text-button" id="exportButton" type="button">Export CSV</button>
             </div>
-            <ol class="history-list" id="historyList"></ol>
+            <div class="result-list" id="historyList"></div>
+          </section>
+          <section class="home-panel">
+            <h2>Attempt details</h2>
+            <div id="resultDetail" class="detail-panel"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="app-page" id="leaderboardsPage">
+        <div class="guide-heading">
+          <p class="eyebrow">Leaderboards</p>
+          <h1>Standard preset rankings</h1>
+          <p>Only default presets count here so everyone is compared on the same rules.</p>
+        </div>
+        <div class="leaderboard-grid" id="leaderboardGrid"></div>
+      </section>
+
+      <section class="app-page" id="guidePage">
+        <section class="guide-section is-first" id="tutorial" aria-labelledby="tutorialTitle">
+          <div class="guide-heading">
+            <p class="eyebrow">Tutorial</p>
+            <h1 id="tutorialTitle">Set up a practical drill in under a minute</h1>
+            <p>Place phones where the athlete can safely see and touch them. Pick a preset or custom drill, then start and track results.</p>
+          </div>
+          <div class="tutorial-grid">
+            <article class="tutorial-card"><div class="visual visual-phone"><span class="phone-speaker"></span><span class="phone-screen">Tap zone</span></div><h3>1. Position phones</h3><p>Use a stable surface, mat, wall mount, or hand-held position. Keep taps quick but safe.</p></article>
+            <article class="tutorial-card"><div class="visual visual-controls"><span></span><span></span><span></span><strong>Preset</strong></div><h3>2. Pick a game</h3><p>Default presets enable leaderboards. Custom setups are best for practice variations.</p></article>
+            <article class="tutorial-card"><div class="visual visual-timing"><span>3</span><span>2</span><span>1</span></div><h3>3. Start countdown</h3><p>Start gives every connected device a 3-second cue before the clock begins.</p></article>
+            <article class="tutorial-card"><div class="visual visual-colors"><span style="--swatch:#ff3b4f"></span><span style="--swatch:#2f80ff"></span><span style="--swatch:#39d98a"></span><span style="--swatch:#ffd166"></span></div><h3>4. React</h3><p>Tap the lit screen. In Focus mode, hold when a distractor color appears.</p></article>
+            <article class="tutorial-card"><div class="visual visual-run"><span>Host</span><span>Join</span><span>Play</span></div><h3>5. Add pods</h3><p>Host a room and send the join link. Connected phones use the profile name as their device ID.</p></article>
+            <article class="tutorial-card"><div class="visual visual-repeat"><span>Save</span><span>Rest</span><span>Repeat</span></div><h3>6. Review results</h3><p>Rest countdowns prepare the next cycle. Results show the configuration and analytics for each attempt.</p></article>
           </div>
         </section>
-
-        <section class="panel-page" id="multiPanel">
-          <div class="result-card">
-            <h2>Multi-device room</h2>
-            <p class="panel-copy">Use this phone as the host, then connect other phones as pod screens with the room link.</p>
-            <div class="form-actions stacked-actions">
-              <button class="primary-button" id="hostRoomButton" type="button">Host room</button>
-              <button class="secondary-button" id="leaveRoomButton" type="button">Leave</button>
-            </div>
-            <label>
-              Room code
-              <input id="roomCode" readonly placeholder="Start a room to get a code" />
-            </label>
-            <label>
-              Join link
-              <input id="roomLink" readonly placeholder="Start a room to create a link" />
-            </label>
-            <button class="secondary-button" id="copyRoomLinkButton" type="button">Copy join link</button>
+        <section class="guide-section" id="features">
+          <div class="guide-heading"><p class="eyebrow">Features</p><h1>What each mode is for</h1></div>
+          <div class="feature-list">
+            <article><h3>Random Reaction</h3><p>Random color prompts for general reaction speed.</p></article>
+            <article><h3>Focus</h3><p>Tap only the target color and avoid distractors.</p></article>
+            <article><h3>Sequence</h3><p>Repeatable color sequences for memory and rhythm.</p></article>
+            <article><h3>Home Base</h3><p>Return-to-center drills using a home color between tasks.</p></article>
+            <article><h3>Default presets</h3><p>Standardized games that create fair leaderboards.</p></article>
+            <article><h3>Custom presets</h3><p>Save, edit, delete, and reload your own drill setups.</p></article>
           </div>
-
-          <div class="result-card">
-            <h2>Join as pod</h2>
-            <p class="panel-copy">On another phone, paste the host room code or open the join link. Keep that phone unlocked and visible.</p>
-            <label>
-              Host room code
-              <input id="joinRoomCode" placeholder="Example: phonepod-ab12cd" />
-            </label>
-            <button class="secondary-button" id="joinRoomButton" type="button">Join room</button>
+        </section>
+        <section class="guide-section" id="use-cases">
+          <div class="guide-heading"><p class="eyebrow">Use cases</p><h1>Example drills</h1></div>
+          <div class="use-case-grid">
+            <article><h3>Solo reaction test</h3><p>Random Sprint preset on one phone, fastest average reaction wins.</p></article>
+            <article><h3>Multi-phone agility</h3><p>Place joined phones around a small area and move to the phone that lights next.</p></article>
+            <article><h3>No-tap control</h3><p>Focus Filter preset with distractors and strike tracking.</p></article>
+            <article><h3>Return-to-base work</h3><p>Home Base Shuttle to force reset mechanics after each tap.</p></article>
           </div>
+        </section>
+      </section>
 
-          <div class="result-card">
+      <section class="app-page" id="profilePage">
+        <div class="profile-grid">
+          <section class="home-panel">
+            <h2>User profile</h2>
+            <form id="profileForm" class="stacked-form">
+              <label>Full name <input id="profileName" placeholder="Your full name" /></label>
+              <button class="primary-button" type="submit">Save profile</button>
+            </form>
+            <p class="status-note" id="profileStatus"></p>
+          </section>
+          <section class="home-panel">
             <div class="section-heading">
-              <h2>Connected pods</h2>
-              <span class="status-pill" id="networkStatus">Solo</span>
+              <h2>Players</h2>
+              <button class="secondary-button compact-button" id="profileAddPlayerButton" type="button">Add Player</button>
             </div>
-            <ol class="pod-list" id="podList"></ol>
-          </div>
-        </section>
-      </aside>
+            <div class="player-list" id="profilePlayerList"></div>
+          </section>
+        </div>
+      </section>
     </main>
 
-    <section class="guide-section" id="tutorial" aria-labelledby="tutorialTitle">
-      <div class="guide-heading">
-        <p class="eyebrow">Tutorial</p>
-        <h2 id="tutorialTitle">Set up a practical drill in under a minute</h2>
-        <p>
-          Place the phone where the athlete can safely see and touch it. Keep the screen awake, choose the
-          drill rules, then start and record reactions.
-        </p>
+    <dialog class="modal" id="registrationDialog">
+      <form method="dialog" id="registrationForm" class="modal-card">
+        <img src="./icon.svg" alt="" class="modal-logo" />
+        <h2>Welcome to Reflex</h2>
+        <p class="panel-copy">Add your name once so connected phones show up as your device.</p>
+        <label>Full name <input id="registrationName" required placeholder="Rohit Raghavan" /></label>
+        <button class="primary-button" type="submit">Continue</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="playerDialog">
+      <form method="dialog" id="playerForm" class="modal-card">
+        <h2>Add Player</h2>
+        <label>Player name <input id="newPlayerName" required placeholder="Player name" /></label>
+        <label>Short note <input id="newPlayerNote" placeholder="Optional: sport, group, role" /></label>
+        <div class="form-actions">
+          <button class="secondary-button" value="cancel" type="button" id="cancelPlayerButton">Cancel</button>
+          <button class="primary-button" type="submit">Save player</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal wide-modal" id="presetDialog">
+      <div class="modal-card">
+        <div class="section-heading">
+          <h2>Choose preset</h2>
+          <button class="text-button" id="closePresetDialogButton" type="button">Close</button>
+        </div>
+        <div class="preset-picker" id="presetPicker"></div>
       </div>
+    </dialog>
 
-      <div class="tutorial-grid">
-        <article class="tutorial-card">
-          <div class="visual visual-phone">
-            <span class="phone-speaker"></span>
-            <span class="phone-screen">Tap zone</span>
-          </div>
-          <h3>1. Position the phone</h3>
-          <p>Use a stable surface, mat, wall mount, or hand-held position. Leave enough space so taps are quick but safe.</p>
-        </article>
-
-        <article class="tutorial-card">
-          <div class="visual visual-controls">
-            <span></span>
-            <span></span>
-            <span></span>
-            <strong>Mode</strong>
-          </div>
-          <h3>2. Choose the activity</h3>
-          <p>Start with Random Reaction for general speed, Focus for inhibition, Sequence for memory, or Home Base for return-to-center work.</p>
-        </article>
-
-        <article class="tutorial-card">
-          <div class="visual visual-timing">
-            <span>45s</span>
-            <span>20 hits</span>
-            <span>2.5s light</span>
-          </div>
-          <h3>3. Set timing rules</h3>
-          <p>Pick a time limit or hit target. Use light timeout to force faster reactions, and add delay when you want less predictable starts.</p>
-        </article>
-
-        <article class="tutorial-card">
-          <div class="visual visual-colors">
-            <span style="--swatch:#ff3b4f"></span>
-            <span style="--swatch:#2f80ff"></span>
-            <span style="--swatch:#39d98a"></span>
-            <span style="--swatch:#ffd166"></span>
-          </div>
-          <h3>4. Select colors</h3>
-          <p>Use fewer colors for beginners. For Focus mode, set one target color and treat the others as no-tap distractors.</p>
-        </article>
-
-        <article class="tutorial-card">
-          <div class="visual visual-run">
-            <span>Start</span>
-            <span>Tap</span>
-            <span>Result</span>
-          </div>
-          <h3>5. Run the drill</h3>
-          <p>Press Start, tap only when the active target appears, then check hits, misses, false hits, and average reaction time.</p>
-        </article>
-
-        <article class="tutorial-card">
-          <div class="visual visual-repeat">
-            <span>Save</span>
-            <span>Rest</span>
-            <span>Repeat</span>
-          </div>
-          <h3>6. Repeat consistently</h3>
-          <p>Save a preset when the setup works. Use cycles and rest seconds to compare multiple rounds fairly.</p>
-        </article>
-
-        <article class="tutorial-card">
-          <div class="visual visual-run">
-            <span>Host</span>
-            <span>Join</span>
-            <span>Place pods</span>
-          </div>
-          <h3>7. Add phones as pods</h3>
-          <p>Open Multi, host a room, share the join link, then place connected phones around the drill area.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="guide-section" id="features" aria-labelledby="featuresTitle">
-      <div class="guide-heading">
-        <p class="eyebrow">Features</p>
-        <h2 id="featuresTitle">What each control is for</h2>
-      </div>
-
-      <div class="feature-list">
-        <article>
-          <h3>Random Reaction</h3>
-          <p>Shows random colors from your selected set. Best for simple reaction speed and warmups.</p>
-        </article>
-        <article>
-          <h3>Focus</h3>
-          <p>Only the target color should be tapped. Distractor colors train restraint, attention, and decision speed.</p>
-        </article>
-        <article>
-          <h3>Sequence</h3>
-          <p>Builds a repeatable color sequence for the round. Useful for memory, rhythm, and planned movement patterns.</p>
-        </article>
-        <article>
-          <h3>Home Base</h3>
-          <p>Alternates between a task color and a home color. Use it when the athlete must return to a start position after each action.</p>
-        </article>
-        <article>
-          <h3>Duration</h3>
-          <p>End by timeout, hit target, or whichever happens first. Time is better for conditioning; hit target is better for consistency.</p>
-        </article>
-        <article>
-          <h3>Lights out</h3>
-          <p>Choose whether a light disappears after a tap, after a timeout, or either. Timeout mode makes missed reactions visible.</p>
-        </article>
-        <article>
-          <h3>Delay</h3>
-          <p>Add no delay, fixed delay, or random delay before the next color. Random delay reduces guessing.</p>
-        </article>
-        <article>
-          <h3>Cycles and rest</h3>
-          <p>Run repeated rounds with planned breaks. This is the easiest way to compare performance while fatigue builds.</p>
-        </article>
-        <article>
-          <h3>Results</h3>
-          <p>Track hits, misses, false hits, best reaction, average reaction, history, and exportable CSV results.</p>
-        </article>
-        <article>
-          <h3>Multi-device rooms</h3>
-          <p>Host a room and connect other phones as pod screens. The host runs the drill while joined phones light up and send taps back.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="guide-section" id="use-cases" aria-labelledby="useCasesTitle">
-      <div class="guide-heading">
-        <p class="eyebrow">Use cases</p>
-        <h2 id="useCasesTitle">Example drills to try</h2>
-      </div>
-
-      <div class="use-case-grid">
-        <article>
-          <h3>Solo reaction test</h3>
-          <p>Random Reaction, 30 seconds, light timeout 1.5s. Place the phone on a table and tap as fast as possible.</p>
-        </article>
-        <article>
-          <h3>Goalkeeper hand speed</h3>
-          <p>Random Reaction, 45 seconds, random delay. Mount the phone at shoulder height and tap with the called hand.</p>
-        </article>
-        <article>
-          <h3>Basketball closeout reset</h3>
-          <p>Home Base, 60 seconds, green as home. Touch the phone, retreat to a cone, then return when home appears.</p>
-        </article>
-        <article>
-          <h3>Focus and no-tap control</h3>
-          <p>Focus, target green, three distractors, three strikes. Tap only green and count false hits as failed reps.</p>
-        </article>
-        <article>
-          <h3>Rehab range-of-motion reps</h3>
-          <p>Hit target, 15 hits, longer light timeout. Put the phone at a safe reach angle and track controlled touches.</p>
-        </article>
-        <article>
-          <h3>Team circuit station</h3>
-          <p>Cycles set to 4, rest 20 seconds. Each athlete takes one cycle, then compare average reaction time.</p>
-        </article>
-        <article>
-          <h3>Multi-phone agility course</h3>
-          <p>Host on one phone and place joined phones around a small area. Athletes move to whichever phone lights up next.</p>
-        </article>
-      </div>
-    </section>
+    <dialog class="modal" id="savePresetDialog">
+      <form method="dialog" id="customPresetForm" class="modal-card">
+        <h2>Save custom preset</h2>
+        <input type="hidden" id="editingPresetId" />
+        <label>Preset name <input id="customPresetName" required placeholder="My reaction drill" /></label>
+        <div class="form-actions">
+          <button class="secondary-button" id="cancelCustomPresetButton" type="button">Cancel</button>
+          <button class="primary-button" type="submit">Save preset</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <script src="./app.js"></script>

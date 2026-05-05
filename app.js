@@ -10,6 +10,7 @@ const colors = [
 ];
 
 const defaults = {
+  presetId: "custom",
   activityMode: "random",
   playerName: "Player 1",
   durationMode: "timeout",
@@ -30,6 +31,44 @@ const defaults = {
   enabledColors: ["Red", "Blue", "Green", "Yellow"]
 };
 
+const defaultPresets = [
+  {
+    id: "random-sprint",
+    type: "default",
+    name: "Random Sprint",
+    description: "30-second speed test with quick lights.",
+    config: { ...defaults, presetId: "random-sprint", activityMode: "random", durationMode: "timeout", timeLimit: 30, lightTimeout: 1.5, delayMode: "random", randomDelayMax: 0.8, cycles: 1, restSeconds: 20 }
+  },
+  {
+    id: "focus-filter",
+    type: "default",
+    name: "Focus Filter",
+    description: "Tap green only and avoid distractors.",
+    config: { ...defaults, presetId: "focus-filter", activityMode: "focus", durationMode: "both", timeLimit: 45, hitTarget: 18, lightTimeout: 1.8, focusTargetColor: "Green", distractorCount: 3, strikeLimit: 3, cycles: 1, restSeconds: 20 }
+  },
+  {
+    id: "sequence-ladder",
+    type: "default",
+    name: "Sequence Ladder",
+    description: "Six-step sequence for rhythm and recall.",
+    config: { ...defaults, presetId: "sequence-ladder", activityMode: "sequence", durationMode: "hits", hitTarget: 18, sequenceSteps: 6, lightTimeout: 2.2, delayMode: "fixed", fixedDelay: 0.25, cycles: 1, restSeconds: 20 }
+  },
+  {
+    id: "home-base-shuttle",
+    type: "default",
+    name: "Home Base Shuttle",
+    description: "Return to green between each task prompt.",
+    config: { ...defaults, presetId: "home-base-shuttle", activityMode: "homeBase", durationMode: "timeout", timeLimit: 60, lightTimeout: 2, delayMode: "random", randomDelayMax: 0.8, homeBaseColor: "Green", cycles: 1, restSeconds: 20 }
+  }
+];
+
+const storageKeys = {
+  user: "reflex:user",
+  players: "reflex:players",
+  customPresets: "reflex:customPresets",
+  history: "reflex:history"
+};
+
 const state = {
   status: "idle",
   config: { ...defaults },
@@ -43,6 +82,7 @@ const state = {
   countdownValue: 0,
   restEndsAt: 0,
   lastSummary: null,
+  selectedResultId: null,
   cycle: 1,
   hits: 0,
   misses: 0,
@@ -55,13 +95,16 @@ const state = {
   timers: new Set(),
   tickTimer: null,
   wakeLock: null,
+  user: null,
+  players: [],
+  customPresets: [],
   network: {
     role: "solo",
     peer: null,
     hostConn: null,
     roomId: "",
     connections: new Map(),
-    pods: [{ id: "local", label: "Host phone", connected: true }],
+    pods: [{ id: "local", label: "This device", connected: true }],
     message: "Solo"
   }
 };
@@ -89,13 +132,19 @@ const fields = [
 ];
 
 function init() {
+  loadAppData();
   buildColorControls();
   bindControls();
   loadPreset(false);
+  renderPlayers();
   resetRun();
   renderHistory();
   renderModeOptions();
   renderNetwork();
+  renderPresets();
+  renderLeaderboards();
+  renderProfile();
+  showRegistrationIfNeeded();
   autoJoinFromUrl();
 
   if ("serviceWorker" in navigator) {
@@ -130,6 +179,7 @@ function bindControls() {
   fields.forEach((field) => {
     $(field).addEventListener("input", () => {
       state.config = readConfig();
+      if (field !== "playerName") state.config.presetId = "custom";
       render();
       renderModeOptions();
     });
@@ -153,14 +203,45 @@ function bindControls() {
   $("pauseButton").addEventListener("click", togglePause);
   $("resetButton").addEventListener("click", resetRun);
   $("podButton").addEventListener("click", handleTap);
-  $("savePresetButton").addEventListener("click", savePreset);
-  $("loadPresetButton").addEventListener("click", () => loadPreset(true));
+  $("loadPresetButton").addEventListener("click", openPresetPicker);
   $("exportButton").addEventListener("click", exportCsv);
   $("wakeLockButton").addEventListener("click", toggleWakeLock);
   $("hostRoomButton").addEventListener("click", hostRoom);
+  $("homeHostButton").addEventListener("click", () => {
+    showPage("play");
+    switchTab("multi");
+    hostRoom();
+  });
   $("joinRoomButton").addEventListener("click", () => joinRoom($("joinRoomCode").value.trim()));
   $("leaveRoomButton").addEventListener("click", leaveRoom);
   $("copyRoomLinkButton").addEventListener("click", copyRoomLink);
+  document.querySelectorAll(".nav-button[data-page]").forEach((button) => {
+    button.addEventListener("click", () => showPage(button.dataset.page));
+  });
+  $("registrationForm").addEventListener("submit", saveRegistration);
+  $("profileForm").addEventListener("submit", saveProfile);
+  $("openPlayerButton").addEventListener("click", openPlayerDialog);
+  $("profileAddPlayerButton").addEventListener("click", openPlayerDialog);
+  $("cancelPlayerButton").addEventListener("click", () => $("playerDialog").close());
+  $("playerForm").addEventListener("submit", savePlayer);
+  $("closePresetDialogButton").addEventListener("click", () => $("presetDialog").close());
+  $("savePresetButton").addEventListener("click", openSavePresetDialog);
+  $("cancelCustomPresetButton").addEventListener("click", () => $("savePresetDialog").close());
+  $("customPresetForm").addEventListener("submit", saveCustomPreset);
+  $("historyList").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-result-id]");
+    if (button) selectResult(button.dataset.resultId);
+  });
+}
+
+function showPage(page) {
+  document.querySelectorAll(".app-page").forEach((section) => section.classList.toggle("is-active", section.id === `${page}Page`));
+  document.querySelectorAll(".nav-button[data-page]").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page));
+  if (page === "results") {
+    renderHistory();
+    renderResultDetail();
+  }
+  if (page === "leaderboards") renderLeaderboards();
 }
 
 function autoJoinFromUrl() {
@@ -168,8 +249,97 @@ function autoJoinFromUrl() {
   const room = params.get("join");
   if (!room) return;
   $("joinRoomCode").value = room;
+  showPage("play");
   switchTab("multi");
   joinRoom(room);
+}
+
+function loadAppData() {
+  state.user = JSON.parse(localStorage.getItem(storageKeys.user) || "null");
+  state.players = JSON.parse(localStorage.getItem(storageKeys.players) || "[]");
+  state.customPresets = JSON.parse(localStorage.getItem(storageKeys.customPresets) || "[]");
+  if (state.user && !state.players.length) {
+    state.players = [{ id: uid("player"), name: state.user.fullName, note: "Primary" }];
+    savePlayers();
+  }
+}
+
+function savePlayers() {
+  localStorage.setItem(storageKeys.players, JSON.stringify(state.players));
+}
+
+function saveCustomPresets() {
+  localStorage.setItem(storageKeys.customPresets, JSON.stringify(state.customPresets));
+}
+
+function showRegistrationIfNeeded() {
+  if (!state.user) $("registrationDialog").showModal();
+}
+
+function saveRegistration(event) {
+  event.preventDefault();
+  const fullName = $("registrationName").value.trim();
+  if (!fullName) return;
+  state.user = { fullName };
+  localStorage.setItem(storageKeys.user, JSON.stringify(state.user));
+  state.players = [{ id: uid("player"), name: fullName, note: "Primary" }];
+  savePlayers();
+  $("registrationDialog").close();
+  renderPlayers();
+  renderProfile();
+}
+
+function saveProfile(event) {
+  event.preventDefault();
+  const fullName = $("profileName").value.trim();
+  if (!fullName) return;
+  const previous = state.user?.fullName;
+  state.user = { fullName };
+  localStorage.setItem(storageKeys.user, JSON.stringify(state.user));
+  if (previous && state.players[0]?.name === previous) {
+    state.players[0].name = fullName;
+    savePlayers();
+  }
+  $("profileStatus").textContent = "Profile saved.";
+  renderPlayers();
+  renderProfile();
+  renderNetwork();
+}
+
+function openPlayerDialog() {
+  $("newPlayerName").value = "";
+  $("newPlayerNote").value = "";
+  $("playerDialog").showModal();
+}
+
+function savePlayer(event) {
+  event.preventDefault();
+  const name = $("newPlayerName").value.trim();
+  if (!name) return;
+  state.players.push({ id: uid("player"), name, note: $("newPlayerNote").value.trim() });
+  savePlayers();
+  $("playerDialog").close();
+  renderPlayers();
+}
+
+function renderPlayers() {
+  const selected = $("playerName")?.value || state.config.playerName;
+  if ($("playerName")) {
+    $("playerName").innerHTML = "";
+    state.players.forEach((player) => $("playerName").add(new Option(player.name, player.name)));
+    if (!state.players.length) $("playerName").add(new Option("Player 1", "Player 1"));
+    $("playerName").value = state.players.some((player) => player.name === selected) ? selected : $("playerName").options[0]?.value;
+    state.config.playerName = $("playerName").value || defaults.playerName;
+  }
+  const html = state.players.length
+    ? state.players.map((player) => `<article class="player-card"><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.note || "Player")}</span></article>`).join("")
+    : `<p class="panel-copy">No players yet.</p>`;
+  if ($("playerList")) $("playerList").innerHTML = html;
+  if ($("profilePlayerList")) $("profilePlayerList").innerHTML = html;
+}
+
+function renderProfile() {
+  if ($("profileName")) $("profileName").value = state.user?.fullName || "";
 }
 
 function hostRoom() {
@@ -178,12 +348,12 @@ function hostRoom() {
     return;
   }
   leaveRoom(false);
-  const roomId = `phonepod-${Math.random().toString(36).slice(2, 8)}`;
+  const roomId = `reflex-${Math.random().toString(36).slice(2, 8)}`;
   const peer = new Peer(roomId, { debug: 0 });
   state.network.role = "host";
   state.network.peer = peer;
   state.network.roomId = roomId;
-  state.network.pods = [{ id: "local", label: "Host phone", connected: true }];
+  state.network.pods = [{ id: "local", label: deviceLabel(), connected: true }];
   setNetworkMessage("Opening room...");
 
   peer.on("open", () => {
@@ -213,8 +383,8 @@ function joinRoom(roomId) {
 
   peer.on("open", () => {
     const conn = peer.connect(roomId, {
-      label: "phonepod",
-      metadata: { label: state.config.playerName || "Pod phone" },
+      label: "reflex",
+      metadata: { label: deviceLabel() },
       serialization: "json"
     });
     state.network.hostConn = conn;
@@ -234,7 +404,7 @@ function leaveRoom(shouldRender = true) {
     hostConn: null,
     roomId: "",
     connections: new Map(),
-    pods: [{ id: "local", label: "Host phone", connected: true }],
+    pods: [{ id: "local", label: deviceLabel(), connected: true }],
     message: "Solo"
   };
   if (shouldRender) render();
@@ -263,7 +433,7 @@ function registerPodConnection(conn) {
 function bindPodHostConnection(conn) {
   conn.on("open", () => {
     setNetworkMessage("Connected as pod");
-    conn.send({ type: "pod-ready", label: state.config.playerName || "Pod phone" });
+    conn.send({ type: "pod-ready", label: deviceLabel() });
     render();
   });
   conn.on("data", handlePodMessage);
@@ -295,6 +465,11 @@ function handlePodMessage(message) {
   if (!message || typeof message !== "object") return;
   if (message.type === "welcome") {
     setNetworkMessage("Connected as pod");
+    return;
+  }
+  if (message.type === "fullscreen") {
+    document.body.classList.add("is-playing");
+    enterFullscreen();
     return;
   }
   if (message.type === "light") {
@@ -332,6 +507,7 @@ function handlePodMessage(message) {
   }
   if (message.type === "done") {
     state.status = "finished";
+    document.body.classList.remove("is-playing");
     state.activeColor = null;
     state.lastSummary = message.summary || null;
     render();
@@ -339,6 +515,7 @@ function handlePodMessage(message) {
   }
   if (message.type === "idle") {
     state.status = "idle";
+    document.body.classList.remove("is-playing");
     state.activeColor = null;
     render();
   }
@@ -410,7 +587,7 @@ function broadcastToPods(message) {
 
 function pickActivePod() {
   const pods = state.network.role === "host" ? state.network.pods.filter((pod) => pod.connected) : state.network.pods;
-  return randomItem(pods.length ? pods : [{ id: "local", label: "Host phone", connected: true }]);
+  return randomItem(pods.length ? pods : [{ id: "local", label: deviceLabel(), connected: true }]);
 }
 
 function upsertPod(pod) {
@@ -483,6 +660,9 @@ function writeConfig(config) {
 function startRun() {
   state.config = readConfig();
   clearTimers();
+  enterFullscreen();
+  document.body.classList.add("is-playing");
+  broadcastToPods({ type: "fullscreen" });
   Object.assign(state, {
     status: "countdown",
     activeColor: null,
@@ -557,6 +737,7 @@ function beginCycle(cycleNumber) {
 
 function resetRun() {
   clearTimers();
+  document.body.classList.remove("is-playing");
   if (state.network.role !== "pod") {
     broadcastToPods({ type: "idle", label: "Ready", subcopy: "Waiting for host." });
   }
@@ -715,6 +896,7 @@ function finishCycle() {
 function finishRun() {
   state.status = "finished";
   clearTimers();
+  document.body.classList.remove("is-playing");
   sendToPod(state.activePodId, { type: "clear", token: state.lightToken });
   state.activeColor = null;
   state.lightToken += 1;
@@ -857,9 +1039,11 @@ function renderStats() {
 }
 
 function renderResults() {
+  const currentResults = document.getElementById("currentResults");
+  if (!currentResults) return;
   const best = state.reactions.length ? `${Math.round(Math.min(...state.reactions))}ms` : "--";
   const summary = state.lastSummary || buildSummary();
-  $("currentResults").innerHTML = `
+  currentResults.innerHTML = `
     <dt>Player</dt><dd>${escapeHtml(state.config.playerName)}</dd>
     <dt>Mode</dt><dd>${titleForMode(state.config.activityMode)}</dd>
     <dt>Hits</dt><dd>${state.hits}</dd>
@@ -896,12 +1080,58 @@ function renderModeOptions() {
 
 function renderHistory() {
   const history = getHistory();
+  if (!$("historyList")) return;
+  if (!state.selectedResultId && history.length) state.selectedResultId = history[0].id;
   $("historyList").innerHTML = history.length
-    ? history
-        .slice(0, 10)
-        .map((item) => `<li>${escapeHtml(item.player)} - ${escapeHtml(item.mode)} - ${item.hits} hits - ${item.avgReaction || "--"}</li>`)
-        .join("")
-    : "<li>No runs yet</li>";
+    ? history.map((item) => `
+      <button class="result-row ${item.id === state.selectedResultId ? "is-selected" : ""}" data-result-id="${item.id}" type="button">
+        <strong>${escapeHtml(item.player)}</strong>
+        <span>${escapeHtml(item.presetName || item.mode)} - ${item.hits} hits - ${item.avgReaction || "--"}</span>
+        <small>${new Date(item.date).toLocaleString()}</small>
+      </button>
+    `).join("")
+    : "<p class=\"panel-copy\">No attempts yet.</p>";
+  renderResultDetail();
+}
+
+function selectResult(id) {
+  state.selectedResultId = id;
+  renderHistory();
+}
+
+function renderResultDetail() {
+  if (!$("resultDetail")) return;
+  const result = getHistory().find((item) => item.id === state.selectedResultId);
+  if (!result) {
+    $("resultDetail").innerHTML = "<p class=\"panel-copy\">Select an attempt to see detailed analytics.</p>";
+    return;
+  }
+  const config = result.config || {};
+  $("resultDetail").innerHTML = `
+    <div class="detail-hero">
+      <h2>${escapeHtml(result.presetName || result.mode)}</h2>
+      <p>${escapeHtml(result.player)} - ${new Date(result.date).toLocaleString()}</p>
+    </div>
+    <div class="detail-stats">
+      <div><strong>${result.hits}</strong><span>Hits</span></div>
+      <div><strong>${result.misses}</strong><span>Misses</span></div>
+      <div><strong>${result.falseHits}</strong><span>False hits</span></div>
+      <div><strong>${result.accuracy || "--"}</strong><span>Accuracy</span></div>
+      <div><strong>${result.avgReaction || "--"}</strong><span>Avg reaction</span></div>
+      <div><strong>${result.bestReaction || "--"}</strong><span>Best reaction</span></div>
+    </div>
+    <h3>Configuration</h3>
+    <dl>
+      <dt>Mode</dt><dd>${escapeHtml(titleForMode(config.activityMode) || result.mode)}</dd>
+      <dt>Duration</dt><dd>${escapeHtml(config.durationMode || "--")}</dd>
+      <dt>Time limit</dt><dd>${config.timeLimit || "--"}s</dd>
+      <dt>Hit target</dt><dd>${config.hitTarget || "--"}</dd>
+      <dt>Light timeout</dt><dd>${config.lightTimeout || "--"}s</dd>
+      <dt>Delay</dt><dd>${escapeHtml(config.delayMode || "--")}</dd>
+      <dt>Cycles</dt><dd>${config.cycles || "--"}</dd>
+      <dt>Leaderboard</dt><dd>${result.leaderboardEligible ? "Eligible" : "Custom game"}</dd>
+    </dl>
+  `;
 }
 
 function renderNetwork() {
@@ -927,45 +1157,163 @@ function renderNetwork() {
     .join("");
 }
 
+function renderLeaderboards() {
+  if (!$("leaderboardGrid")) return;
+  const history = getHistory().filter((result) => result.leaderboardEligible);
+  $("leaderboardGrid").innerHTML = defaultPresets.map((preset) => {
+    const rows = history
+      .filter((result) => result.presetId === preset.id)
+      .sort((a, b) => parseMs(a.avgReaction) - parseMs(b.avgReaction))
+      .slice(0, 5);
+    return `
+      <article class="home-panel">
+        <h2>${escapeHtml(preset.name)}</h2>
+        <p class="panel-copy">${escapeHtml(preset.description)}</p>
+        <ol class="leaderboard-list">
+          ${rows.length ? rows.map((row, index) => `<li><strong>${index + 1}. ${escapeHtml(row.player)}</strong><span>${row.avgReaction || "--"} avg - ${row.hits} hits</span></li>`).join("") : "<li><span>No attempts yet</span></li>"}
+        </ol>
+      </article>
+    `;
+  }).join("");
+}
+
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.tab === name));
   document.querySelectorAll(".panel-page").forEach((page) => page.classList.remove("is-active"));
   $(`${name}Panel`).classList.add("is-active");
 }
 
-function savePreset() {
-  localStorage.setItem("phonepod:preset", JSON.stringify(readConfig()));
+function loadPreset() {
+  writeConfig(defaults);
 }
 
-function loadPreset(showMissing) {
-  const saved = localStorage.getItem("phonepod:preset");
-  if (!saved) {
-    writeConfig(defaults);
-    if (showMissing) window.alert("No saved preset yet.");
-    return;
-  }
-  writeConfig(JSON.parse(saved));
+function openPresetPicker() {
+  renderPresets();
+  $("presetDialog").showModal();
+}
+
+function renderPresets() {
+  const allPresets = [...defaultPresets, ...state.customPresets];
+  const cards = allPresets.map((preset) => presetCard(preset)).join("");
+  if ($("presetPicker")) $("presetPicker").innerHTML = cards;
+  if ($("homePresetList")) $("homePresetList").innerHTML = defaultPresets.map((preset) => presetCard(preset, true)).join("");
+  document.querySelectorAll("[data-load-preset]").forEach((button) => {
+    button.onclick = () => applyPreset(button.dataset.loadPreset);
+  });
+  document.querySelectorAll("[data-edit-preset]").forEach((button) => {
+    button.onclick = () => editCustomPreset(button.dataset.editPreset);
+  });
+  document.querySelectorAll("[data-delete-preset]").forEach((button) => {
+    button.onclick = () => deleteCustomPreset(button.dataset.deletePreset);
+  });
+}
+
+function presetCard(preset, compact = false) {
+  const config = preset.config;
+  const meta = `${titleForMode(config.activityMode)} - ${config.durationMode} - ${config.durationMode === "hits" ? `${config.hitTarget} hits` : `${config.timeLimit}s`}`;
+  const customActions = preset.type === "custom" && !compact
+    ? `<button class="text-button" data-edit-preset="${preset.id}" type="button">Edit</button><button class="text-button danger-text" data-delete-preset="${preset.id}" type="button">Delete</button>`
+    : "";
+  return `
+    <article class="preset-card">
+      <div>
+        <strong>${escapeHtml(preset.name)}</strong>
+        <span>${escapeHtml(preset.description || meta)}</span>
+        <small>${escapeHtml(meta)}</small>
+      </div>
+      <div class="preset-actions">
+        <button class="secondary-button compact-button" data-load-preset="${preset.id}" type="button">Use</button>
+        ${customActions}
+      </div>
+    </article>
+  `;
+}
+
+function applyPreset(id) {
+  const preset = [...defaultPresets, ...state.customPresets].find((item) => item.id === id);
+  if (!preset) return;
+  const playerName = $("playerName")?.value || state.config.playerName;
+  writeConfig({ ...preset.config, playerName });
+  if ($("presetDialog").open) $("presetDialog").close();
+  showPage("play");
+  setPresetStatus(`${preset.name} loaded.`);
+}
+
+function openSavePresetDialog() {
+  $("editingPresetId").value = "";
+  $("customPresetName").value = "";
+  $("savePresetDialog").showModal();
+}
+
+function saveCustomPreset(event) {
+  event.preventDefault();
+  const id = $("editingPresetId").value || uid("preset");
+  const name = $("customPresetName").value.trim();
+  if (!name) return;
+  const config = { ...readConfig(), presetId: id };
+  const existing = state.customPresets.findIndex((preset) => preset.id === id);
+  const preset = { id, type: "custom", name, description: "Custom game", config };
+  if (existing >= 0) state.customPresets[existing] = preset;
+  else state.customPresets.push(preset);
+  saveCustomPresets();
+  state.config.presetId = id;
+  $("savePresetDialog").close();
+  setPresetStatus(`${name} saved.`);
+  renderPresets();
+}
+
+function editCustomPreset(id) {
+  const preset = state.customPresets.find((item) => item.id === id);
+  if (!preset) return;
+  writeConfig(preset.config);
+  $("presetDialog").close();
+  $("editingPresetId").value = preset.id;
+  $("customPresetName").value = preset.name;
+  $("savePresetDialog").showModal();
+}
+
+function deleteCustomPreset(id) {
+  state.customPresets = state.customPresets.filter((preset) => preset.id !== id);
+  saveCustomPresets();
+  renderPresets();
+  setPresetStatus("Custom preset deleted.");
+}
+
+function setPresetStatus(message) {
+  if (!$("presetStatus")) return;
+  $("presetStatus").textContent = message;
+  setTimeout(() => {
+    if ($("presetStatus").textContent === message) $("presetStatus").textContent = "";
+  }, 2400);
 }
 
 function saveResult() {
   const summary = state.lastSummary || buildSummary();
+  const preset = defaultPresets.find((item) => item.id === state.config.presetId) || state.customPresets.find((item) => item.id === state.config.presetId);
   const result = {
+    id: uid("result"),
     date: new Date().toISOString(),
     player: state.config.playerName,
     mode: titleForMode(state.config.activityMode),
+    presetId: state.config.presetId || "custom",
+    presetName: preset?.name || "Custom game",
+    leaderboardEligible: defaultPresets.some((item) => item.id === state.config.presetId),
     hits: state.hits,
     misses: state.misses,
     falseHits: state.falseHits,
     accuracy: summary.accuracy,
     avgReaction: summary.avgReaction === "--" ? "" : summary.avgReaction,
-    bestReaction: summary.bestReaction === "--" ? "" : summary.bestReaction
+    bestReaction: summary.bestReaction === "--" ? "" : summary.bestReaction,
+    totalTime: summary.totalTime,
+    config: { ...state.config }
   };
   const history = [result, ...getHistory()].slice(0, 50);
-  localStorage.setItem("phonepod:history", JSON.stringify(history));
+  state.selectedResultId = result.id;
+  localStorage.setItem(storageKeys.history, JSON.stringify(history));
 }
 
 function getHistory() {
-  return JSON.parse(localStorage.getItem("phonepod:history") || "[]");
+  return JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
 }
 
 function buildSummary() {
@@ -1001,7 +1349,7 @@ function exportCsv() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "phonepod-results.csv";
+  link.download = "reflex-results.csv";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -1035,10 +1383,21 @@ function titleForMode(mode) {
   }[mode];
 }
 
+function enterFullscreen() {
+  const target = $("playPage") || document.documentElement;
+  if (document.fullscreenElement || !target.requestFullscreen) return;
+  target.requestFullscreen().catch(() => {});
+}
+
 function podLabel(id) {
-  if (id === "local") return "Host phone";
+  if (id === "local") return deviceLabel();
   const pod = state.network.pods.find((item) => item.id === id);
-  return pod?.label || "Pod phone";
+  return pod?.label || "Device";
+}
+
+function deviceLabel() {
+  const name = state.user?.fullName || "This";
+  return `${name}'s device`;
 }
 
 function randomItem(items) {
@@ -1053,8 +1412,18 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function uid(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function parseMs(value) {
+  const parsed = Number(String(value || "").replace("ms", ""));
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
 function csvCell(value) {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const text = typeof value === "object" && value !== null ? JSON.stringify(value) : String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 function escapeHtml(value) {
