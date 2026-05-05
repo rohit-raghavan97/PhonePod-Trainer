@@ -70,6 +70,7 @@
           <button class="tab is-active" data-tab="setup" type="button">Setup</button>
           <button class="tab" data-tab="colors" type="button">Colors</button>
           <button class="tab" data-tab="results" type="button">Results</button>
+          <button class="tab" data-tab="multi" type="button">Multi</button>
         </nav>
 
         <form class="panel-page is-active" id="setupPanel">
@@ -206,6 +207,44 @@
             <ol class="history-list" id="historyList"></ol>
           </div>
         </section>
+
+        <section class="panel-page" id="multiPanel">
+          <div class="result-card">
+            <h2>Multi-device room</h2>
+            <p class="panel-copy">Use this phone as the host, then connect other phones as pod screens with the room link.</p>
+            <div class="form-actions stacked-actions">
+              <button class="primary-button" id="hostRoomButton" type="button">Host room</button>
+              <button class="secondary-button" id="leaveRoomButton" type="button">Leave</button>
+            </div>
+            <label>
+              Room code
+              <input id="roomCode" readonly placeholder="Start a room to get a code" />
+            </label>
+            <label>
+              Join link
+              <input id="roomLink" readonly placeholder="Start a room to create a link" />
+            </label>
+            <button class="secondary-button" id="copyRoomLinkButton" type="button">Copy join link</button>
+          </div>
+
+          <div class="result-card">
+            <h2>Join as pod</h2>
+            <p class="panel-copy">On another phone, paste the host room code or open the join link. Keep that phone unlocked and visible.</p>
+            <label>
+              Host room code
+              <input id="joinRoomCode" placeholder="Example: phonepod-ab12cd" />
+            </label>
+            <button class="secondary-button" id="joinRoomButton" type="button">Join room</button>
+          </div>
+
+          <div class="result-card">
+            <div class="section-heading">
+              <h2>Connected pods</h2>
+              <span class="status-pill" id="networkStatus">Solo</span>
+            </div>
+            <ol class="pod-list" id="podList"></ol>
+          </div>
+        </section>
       </aside>
     </main>
 
@@ -280,6 +319,16 @@
           <h3>6. Repeat consistently</h3>
           <p>Save a preset when the setup works. Use cycles and rest seconds to compare multiple rounds fairly.</p>
         </article>
+
+        <article class="tutorial-card">
+          <div class="visual visual-run">
+            <span>Host</span>
+            <span>Join</span>
+            <span>Place pods</span>
+          </div>
+          <h3>7. Add phones as pods</h3>
+          <p>Open Multi, host a room, share the join link, then place connected phones around the drill area.</p>
+        </article>
       </div>
     </section>
 
@@ -326,6 +375,10 @@
           <h3>Results</h3>
           <p>Track hits, misses, false hits, best reaction, average reaction, history, and exportable CSV results.</p>
         </article>
+        <article>
+          <h3>Multi-device rooms</h3>
+          <p>Host a room and connect other phones as pod screens. The host runs the drill while joined phones light up and send taps back.</p>
+        </article>
       </div>
     </section>
 
@@ -360,9 +413,14 @@
           <h3>Team circuit station</h3>
           <p>Cycles set to 4, rest 20 seconds. Each athlete takes one cycle, then compare average reaction time.</p>
         </article>
+        <article>
+          <h3>Multi-phone agility course</h3>
+          <p>Host on one phone and place joined phones around a small area. Athletes move to whichever phone lights up next.</p>
+        </article>
       </div>
     </section>
 
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-const cacheName = "phonepod-v3";
+const cacheName = "phonepod-v4";
 const assets = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
