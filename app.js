@@ -82,6 +82,7 @@ const state = {
   countdownValue: 0,
   restEndsAt: 0,
   lastSummary: null,
+  lastReactionMs: null,
   selectedResultId: null,
   cycle: 1,
   hits: 0,
@@ -208,6 +209,7 @@ function bindControls() {
   $("loadPresetButton").addEventListener("click", openPresetPicker);
   $("exportButton").addEventListener("click", exportCsv);
   $("wakeLockButton").addEventListener("click", toggleWakeLock);
+  $("menuToggle").addEventListener("click", toggleMenu);
   $("hostRoomButton").addEventListener("click", hostRoom);
   $("homeHostButton").addEventListener("click", () => {
     showPage("play");
@@ -218,7 +220,10 @@ function bindControls() {
   $("leaveRoomButton").addEventListener("click", leaveRoom);
   $("copyRoomLinkButton").addEventListener("click", copyRoomLink);
   document.querySelectorAll(".nav-button[data-page]").forEach((button) => {
-    button.addEventListener("click", () => showPage(button.dataset.page));
+    button.addEventListener("click", () => {
+      showPage(button.dataset.page);
+      closeMenu();
+    });
   });
   $("registrationForm").addEventListener("submit", saveRegistration);
   $("profileForm").addEventListener("submit", saveProfile);
@@ -245,6 +250,16 @@ function showPage(page) {
   }
   if (page === "players") renderPlayers();
   if (page === "leaderboards") renderLeaderboards();
+}
+
+function toggleMenu() {
+  const isOpen = document.body.classList.toggle("menu-open");
+  $("menuToggle").setAttribute("aria-expanded", String(isOpen));
+}
+
+function closeMenu() {
+  document.body.classList.remove("menu-open");
+  $("menuToggle").setAttribute("aria-expanded", "false");
 }
 
 function autoJoinFromUrl() {
@@ -542,7 +557,8 @@ function handleRemoteTap(peerId, message) {
   }
 
   state.hits += 1;
-  state.reactions.push(message.reactionMs || performance.now() - state.activeStartedAt);
+  state.lastReactionMs = message.reactionMs || performance.now() - state.activeStartedAt;
+  state.reactions.push(state.lastReactionMs);
   sendToPod(peerId, { type: "clear", token: state.lightToken });
   state.activeColor = null;
   state.lightToken += 1;
@@ -680,6 +696,7 @@ function startRun() {
     countdownValue: 3,
     restEndsAt: 0,
     lastSummary: null,
+    lastReactionMs: null,
     cycle: 1,
     hits: 0,
     misses: 0,
@@ -757,6 +774,7 @@ function resetRun() {
     countdownValue: 0,
     restEndsAt: 0,
     lastSummary: null,
+    lastReactionMs: null,
     cycle: 1,
     hits: 0,
     misses: 0,
@@ -863,7 +881,8 @@ function handleTap() {
   }
 
   state.hits += 1;
-  state.reactions.push(performance.now() - state.activeStartedAt);
+  state.lastReactionMs = performance.now() - state.activeStartedAt;
+  state.reactions.push(state.lastReactionMs);
   sendToPod(state.activePodId, { type: "clear", token: state.lightToken });
   state.activeColor = null;
   state.lightToken += 1;
@@ -1027,12 +1046,16 @@ function renderStage() {
 
   $("startButton").disabled = state.network.role === "pod" || state.status === "countdown" || state.status === "running" || state.status === "resting";
   $("pauseButton").disabled = state.network.role === "pod" || (state.status !== "running" && state.status !== "paused");
-  $("pauseButton").textContent = state.status === "paused" ? "Resume" : "Pause";
+  $("pauseButton").textContent = state.status === "paused" ? "Play" : "Pause";
+  $("gamePauseButton").textContent = state.status === "paused" ? "Play" : "Pause";
 }
 
 function renderStats() {
   $("hitCount").textContent = String(state.hits);
+  $("missCount").textContent = String(state.misses);
+  $("lastReaction").textContent = state.lastReactionMs ? `${Math.round(state.lastReactionMs)}ms` : "--";
   $("avgReaction").textContent = state.reactions.length ? `${Math.round(avg(state.reactions))}ms` : "--";
+  $("bestReaction").textContent = state.reactions.length ? `${Math.round(Math.min(...state.reactions))}ms` : "--";
   $("cycleValue").textContent = `${state.cycle}/${state.config.cycles}`;
 
   if (state.status === "countdown") {

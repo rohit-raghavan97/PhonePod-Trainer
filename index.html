@@ -21,7 +21,8 @@
         <span class="brand-dot"></span>
         Reflex
       </button>
-      <nav class="site-nav" aria-label="App pages">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="siteNav">Menu</button>
+      <nav class="site-nav" id="siteNav" aria-label="App pages">
         <button class="nav-button is-active" data-page="home" type="button">Home</button>
         <button class="nav-button" data-page="play" type="button">Play</button>
         <button class="nav-button" data-page="players" type="button">Players</button>
@@ -73,7 +74,10 @@
 
             <div class="metric-strip" aria-label="Live stats">
               <div><span id="hitCount">0</span><small>Hits</small></div>
+              <div><span id="missCount">0</span><small>Misses</small></div>
+              <div><span id="lastReaction">--</span><small>Last</small></div>
               <div><span id="avgReaction">--</span><small>Avg</small></div>
+              <div><span id="bestReaction">--</span><small>Best</small></div>
               <div><span id="remainingValue">--</span><small>Left</small></div>
               <div><span id="cycleValue">1/1</span><small>Cycle</small></div>
             </div>
