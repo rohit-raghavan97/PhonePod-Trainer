@@ -188,7 +188,8 @@ select {
 
 .preset-card {
   grid-template-columns: 1fr auto;
-  align-items: center;
+  align-items: start;
+  gap: 0.8rem;
 }
 
 .preset-card:hover,
@@ -202,13 +203,55 @@ select {
   gap: 0.45rem;
 }
 
+.preset-card-main {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.preset-card-title {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.preset-card-description {
+  display: block;
+  line-height: 1.45;
+}
+
+.preset-key-configs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.preset-key-configs span {
+  display: inline-grid;
+  min-height: 1.8rem;
+  place-items: center;
+  padding: 0 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .mini-swatch-row {
   display: flex;
-  gap: 0.3rem;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
   margin-top: 0.4rem;
 }
 
+.mini-swatch-row span:not(.mini-swatch) {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
 .mini-swatch {
+  display: inline-block;
   width: 1rem;
   height: 1rem;
   border-radius: 999px;
@@ -1279,6 +1322,18 @@ dd {
 }
 
 @media (max-width: 520px) {
+  .preset-card {
+    grid-template-columns: 1fr;
+  }
+
+  .preset-actions {
+    width: 100%;
+  }
+
+  .preset-actions .compact-button {
+    flex: 1;
+  }
+
   .metric-strip,
   .stage-summary,
   .two-col,

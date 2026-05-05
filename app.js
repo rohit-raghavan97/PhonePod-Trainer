@@ -110,6 +110,8 @@ const state = {
   customPresets: [],
   history: [],
   selectedPresetId: "",
+  currentPage: "home",
+  isHandlingPopState: false,
   editingPresetId: null,
   editingPresetName: "",
   backend: {
@@ -171,6 +173,7 @@ async function init() {
   renderPresets();
   renderLeaderboards();
   renderProfile();
+  syncInitialRoute();
   showRegistrationIfNeeded();
   autoJoinFromUrl();
 
@@ -268,11 +271,21 @@ function bindControls() {
     const button = event.target.closest("[data-result-id]");
     if (button) selectResult(button.dataset.resultId);
   });
+  window.addEventListener("popstate", (event) => {
+    state.isHandlingPopState = true;
+    showPage(event.state?.page || "home", { push: false });
+    state.isHandlingPopState = false;
+  });
 }
 
-function showPage(page) {
+function showPage(page, options = {}) {
+  const shouldPush = options.push !== false && !state.isHandlingPopState;
   document.querySelectorAll(".app-page").forEach((section) => section.classList.toggle("is-active", section.id === `${page}Page`));
   document.querySelectorAll(".nav-button[data-page]").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page));
+  if (page !== state.currentPage && shouldPush) {
+    window.history.pushState({ page }, "", `#${page}`);
+  }
+  state.currentPage = page;
   if (page === "results") {
     renderHistory();
     renderResultDetail();
@@ -281,6 +294,13 @@ function showPage(page) {
   if (page === "leaderboards") renderLeaderboards();
   if (page === "presets") renderPresets();
   if (page === "presetDetail" && state.selectedPresetId) renderPresetDetail();
+}
+
+function syncInitialRoute() {
+  const hashPage = window.location.hash.replace("#", "");
+  const page = hashPage && $(`${hashPage}Page`) ? hashPage : "home";
+  window.history.replaceState({ page }, "", page === "home" ? window.location.pathname + window.location.search : `#${page}`);
+  if (page !== "home") showPage(page, { push: false });
 }
 
 function toggleMenu() {
@@ -1353,21 +1373,21 @@ function renderPresets() {
 
 function presetCard(preset, compact = false) {
   const config = preset.config;
-  const meta = `${titleForMode(config.activityMode)} - ${config.durationMode} - ${config.durationMode === "hits" ? `${config.hitTarget} hits` : `${config.timeLimit}s`}`;
+  const keyConfigs = presetKeyConfigs(config);
   const colorDots = config.enabledColors.map((name) => {
     const color = colors.find((item) => item.name === name);
-    return `<span class="mini-swatch" title="${escapeHtml(name)}" style="background:${color?.value || "#fff"}"></span>`;
+    return `<span class="mini-swatch" title="${escapeHtml(name)}" style="background:${color?.value || "#fff"}"></span><span>${escapeHtml(name)}</span>`;
   }).join("");
   const deleteAction = preset.type === "custom" && !compact
     ? `<button class="text-button danger-text" data-delete-preset="${preset.id}" type="button">Delete</button>`
     : "";
   return `
     <article class="preset-card selectable-card" data-open-preset="${preset.id}" role="button" tabindex="0">
-      <div>
-        <strong>${escapeHtml(preset.name)}</strong>
-        <span>${escapeHtml(preset.description || meta)}</span>
-        <small>${escapeHtml(meta)}</small>
-        <div class="mini-swatch-row">${colorDots}</div>
+      <div class="preset-card-main">
+        <strong class="preset-card-title">${escapeHtml(preset.name)}</strong>
+        <span class="preset-card-description">${escapeHtml(preset.description || "Custom game")}</span>
+        <div class="preset-key-configs">${keyConfigs.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+        <div class="mini-swatch-row" aria-label="Preset colors">${colorDots}</div>
       </div>
       <div class="preset-actions">
         <button class="secondary-button compact-button" data-open-preset="${preset.id}" type="button">Details</button>
@@ -1375,6 +1395,14 @@ function presetCard(preset, compact = false) {
       </div>
     </article>
   `;
+}
+
+function presetKeyConfigs(config) {
+  return [
+    titleForMode(config.activityMode),
+    config.durationMode === "hits" ? `${config.hitTarget} hits` : `${config.timeLimit}s limit`,
+    config.delayMode === "random" ? `Random delay ${config.randomDelayMax}s` : config.delayMode === "fixed" ? `Fixed delay ${config.fixedDelay}s` : "No delay"
+  ];
 }
 
 function openPresetDetail(id) {

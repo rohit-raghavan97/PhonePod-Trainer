@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.14 - 2026-05-06
+
+- Cleaned up preset list cards with separate rows for name, description, key configuration, and colors.
+- Added browser/app back-button handling so navigation returns to the previous Reflex page before exiting.
+
 ## v1.13 - 2026-05-06
 
 - Added hidden registered-user tracking through Supabase.
