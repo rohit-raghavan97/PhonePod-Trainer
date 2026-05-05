@@ -37,7 +37,8 @@ html {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   max-width: 100%;
   min-width: 0;
@@ -903,7 +904,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 2.7rem;
   border: 1px solid var(--line);
@@ -911,6 +913,53 @@ select {
   background: #10161b;
   color: var(--text);
   padding: 0 0.75rem;
+}
+
+textarea {
+  min-height: 5rem;
+  padding: 0.75rem;
+  resize: vertical;
+}
+
+.results-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.results-overview article,
+.insight-list p {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(23, 29, 34, 0.88);
+  padding: 0.8rem;
+}
+
+.results-overview strong {
+  display: block;
+  font-size: 1.35rem;
+}
+
+.results-overview span,
+.insight-list p {
+  color: var(--muted);
+}
+
+.attempt-score {
+  display: inline-grid;
+  margin-top: 0.8rem;
+  min-height: 2rem;
+  place-items: center;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: rgba(57, 217, 138, 0.16);
+  color: var(--accent);
+}
+
+.insight-list {
+  display: grid;
+  gap: 0.55rem;
 }
 
 .two-col,
@@ -1284,6 +1333,7 @@ dd {
   .profile-grid,
   .results-layout,
   .leaderboard-grid,
+  .results-overview,
   .player-page-list,
   .preset-detail-layout {
     grid-template-columns: 1fr;

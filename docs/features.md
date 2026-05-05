@@ -10,7 +10,7 @@
 ## Presets
 
 - Default presets are standardized and can be used for fair leaderboards.
-- Custom presets can be saved, loaded, edited across all setup fields, and deleted from the preset detail page.
+- Custom presets can be saved with descriptions, loaded, edited across all setup fields, and deleted from the preset detail page.
 - Duplicate custom preset names and duplicate rule/color configurations are blocked.
 - When Supabase is configured, custom presets are shared globally.
 
@@ -29,7 +29,7 @@
 
 - Each completed attempt records player, mode, preset, hits, misses, false hits, accuracy, average reaction, best reaction, total time, and the full configuration.
 - Results can be selected for detailed review.
-- Default preset attempts are eligible for leaderboards.
+- Saved preset attempts, including custom presets, are eligible for leaderboards when compared against the same preset.
 - When Supabase is configured, results are shared globally.
 
 ## Multi-Device Rooms

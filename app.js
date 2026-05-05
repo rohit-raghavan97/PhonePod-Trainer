@@ -1107,6 +1107,7 @@ function render() {
   renderStage();
   renderStats();
   renderResults();
+  renderResultsOverview();
   renderNetwork();
 }
 
@@ -1240,12 +1241,14 @@ function renderHistory() {
   $("historyList").innerHTML = history.length
     ? history.map((item) => `
       <button class="result-row ${item.id === state.selectedResultId ? "is-selected" : ""}" data-result-id="${item.id}" type="button">
-        <strong>${escapeHtml(item.player)}</strong>
-        <span>${escapeHtml(item.presetName || item.mode)} - ${item.hits} hits - ${item.avgReaction || "--"}</span>
+        <strong>${escapeHtml(item.player)} <span>${attemptScore(item)}</span></strong>
+        <span>${escapeHtml(item.presetName || item.mode)} - ${item.hits} hits - ${item.accuracy || "--"} accuracy</span>
+        <small>${item.avgReaction || "--"} avg - ${item.bestReaction || "--"} best</small>
         <small>${new Date(item.date).toLocaleString()}</small>
       </button>
     `).join("")
     : "<p class=\"panel-copy\">No attempts yet.</p>";
+  renderResultsOverview();
   renderResultDetail();
 }
 
@@ -1262,10 +1265,13 @@ function renderResultDetail() {
     return;
   }
   const config = result.config || {};
+  const analytics = attemptAnalytics(result);
+  const insights = attemptInsights(result, analytics);
   $("resultDetail").innerHTML = `
     <div class="detail-hero">
       <h2>${escapeHtml(result.presetName || result.mode)}</h2>
       <p>${escapeHtml(result.player)} - ${new Date(result.date).toLocaleString()}</p>
+      <strong class="attempt-score">${attemptScore(result)}</strong>
     </div>
     <div class="detail-stats">
       <div><strong>${result.hits}</strong><span>Hits</span></div>
@@ -1274,7 +1280,12 @@ function renderResultDetail() {
       <div><strong>${result.accuracy || "--"}</strong><span>Accuracy</span></div>
       <div><strong>${result.avgReaction || "--"}</strong><span>Avg reaction</span></div>
       <div><strong>${result.bestReaction || "--"}</strong><span>Best reaction</span></div>
+      <div><strong>${analytics.consistency}</strong><span>Consistency</span></div>
+      <div><strong>${analytics.falseRate}</strong><span>False hit rate</span></div>
+      <div><strong>${analytics.pace}</strong><span>Attempt pace</span></div>
     </div>
+    <h3>Coach insights</h3>
+    <div class="insight-list">${insights.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}</div>
     <h3>Configuration</h3>
     <dl>
       <dt>Mode</dt><dd>${escapeHtml(titleForMode(config.activityMode) || result.mode)}</dd>
@@ -1284,8 +1295,22 @@ function renderResultDetail() {
       <dt>Light timeout</dt><dd>${config.lightTimeout || "--"}s</dd>
       <dt>Delay</dt><dd>${escapeHtml(config.delayMode || "--")}</dd>
       <dt>Cycles</dt><dd>${config.cycles || "--"}</dd>
-      <dt>Leaderboard</dt><dd>${result.leaderboardEligible ? "Eligible" : "Custom game"}</dd>
+      <dt>Colors</dt><dd>${escapeHtml((config.enabledColors || []).join(", ") || "--")}</dd>
+      <dt>Leaderboard</dt><dd>${result.leaderboardEligible ? "Eligible" : "Unsaved custom run"}</dd>
     </dl>
+  `;
+}
+
+function renderResultsOverview() {
+  if (!$("resultsOverview")) return;
+  const history = getHistory();
+  const players = new Set(history.map((item) => item.player)).size;
+  const best = [...history].sort((a, b) => attemptScoreValue(b) - attemptScoreValue(a))[0];
+  $("resultsOverview").innerHTML = `
+    <article><strong>${history.length}</strong><span>Total attempts</span></article>
+    <article><strong>${players}</strong><span>Players tested</span></article>
+    <article><strong>${best ? attemptScore(best) : "--"}</strong><span>Best score</span></article>
+    <article><strong>${best ? escapeHtml(best.player) : "--"}</strong><span>Top performer</span></article>
   `;
 }
 
@@ -1315,17 +1340,18 @@ function renderNetwork() {
 function renderLeaderboards() {
   if (!$("leaderboardGrid")) return;
   const history = getHistory().filter((result) => result.leaderboardEligible);
-  $("leaderboardGrid").innerHTML = defaultPresets.map((preset) => {
+  const presets = [...defaultPresets, ...state.customPresets].filter((preset) => history.some((result) => result.presetId === preset.id));
+  $("leaderboardGrid").innerHTML = (presets.length ? presets : [...defaultPresets, ...state.customPresets]).map((preset) => {
     const rows = history
       .filter((result) => result.presetId === preset.id)
-      .sort((a, b) => parseMs(a.avgReaction) - parseMs(b.avgReaction))
+      .sort((a, b) => attemptScoreValue(b) - attemptScoreValue(a))
       .slice(0, 5);
     return `
       <article class="home-panel">
         <h2>${escapeHtml(preset.name)}</h2>
         <p class="panel-copy">${escapeHtml(preset.description)}</p>
         <ol class="leaderboard-list">
-          ${rows.length ? rows.map((row, index) => `<li><strong>${index + 1}. ${escapeHtml(row.player)}</strong><span>${row.avgReaction || "--"} avg - ${row.hits} hits</span></li>`).join("") : "<li><span>No attempts yet</span></li>"}
+          ${rows.length ? rows.map((row, index) => `<li><strong>${index + 1}. ${escapeHtml(row.player)}</strong><span>${attemptScore(row)} - ${row.avgReaction || "--"} avg - ${row.accuracy || "--"}</span></li>`).join("") : "<li><span>No attempts yet</span></li>"}
         </ol>
       </article>
     `;
@@ -1444,6 +1470,7 @@ function presetDetailForm(preset, editable) {
   return `
     <input type="hidden" id="detailPresetId" value="${escapeHtml(preset.id)}" />
     <label>Preset name <input id="detailPresetName" value="${escapeHtml(preset.name)}" ${disabled} required /></label>
+    <label>Description <textarea id="detailPresetDescription" ${disabled} placeholder="What this test is used for">${escapeHtml(preset.description || "")}</textarea></label>
     <label>Activity ${detailSelect("detailActivityMode", config.activityMode, [
       ["random", "Random Reaction"], ["focus", "Focus"], ["sequence", "Sequence"], ["homeBase", "Home Base"]
     ], disabled)}</label>
@@ -1517,7 +1544,7 @@ async function saveCustomPreset(event) {
     return;
   }
   const previousPresets = [...state.customPresets];
-  const preset = { id, type: "custom", name, description: "Custom game", config };
+  const preset = { id, type: "custom", name, description: $("detailPresetDescription").value.trim() || "Custom game", config };
   if (existing >= 0) state.customPresets[existing] = preset;
   else state.customPresets.push(preset);
   try {
@@ -1643,6 +1670,7 @@ function saveResult() {
     presetId: state.config.presetId || "custom",
     presetName: preset?.name || "Custom game",
     leaderboardEligible: defaultPresets.some((item) => item.id === state.config.presetId),
+    score: 0,
     hits: state.hits,
     misses: state.misses,
     falseHits: state.falseHits,
@@ -1652,6 +1680,8 @@ function saveResult() {
     totalTime: summary.totalTime,
     config: { ...state.config }
   };
+  result.leaderboardEligible = Boolean(preset && state.config.presetId && state.config.presetId !== "custom");
+  result.score = attemptScoreValue(result);
   const history = [result, ...getHistory()].slice(0, 100);
   state.history = history;
   state.selectedResultId = result.id;
@@ -1663,6 +1693,61 @@ function saveResult() {
 
 function getHistory() {
   return state.history.length ? state.history : JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
+}
+
+function attemptScore(result) {
+  const score = result.score || attemptScoreValue(result);
+  return Number.isFinite(score) && score > 0 ? `${score}/100` : "--";
+}
+
+function attemptScoreValue(result) {
+  const accuracy = parsePercent(result.accuracy);
+  const avgReaction = parseMs(result.avgReaction);
+  const bestReaction = parseMs(result.bestReaction);
+  const attempts = (result.hits || 0) + (result.misses || 0) + (result.falseHits || 0);
+  if (!attempts || avgReaction === Number.MAX_SAFE_INTEGER) return 0;
+  const speedScore = clamp(Math.round(100 - ((avgReaction - 250) / 750) * 100), 0, 100);
+  const bestScore = bestReaction === Number.MAX_SAFE_INTEGER ? speedScore : clamp(Math.round(100 - ((bestReaction - 180) / 620) * 100), 0, 100);
+  const volumeScore = clamp(Math.round(((result.hits || 0) / Math.max(1, result.config?.hitTarget || result.hits || 1)) * 100), 0, 100);
+  const falsePenalty = clamp((result.falseHits || 0) * 6, 0, 30);
+  return clamp(Math.round(speedScore * 0.42 + accuracy * 0.32 + bestScore * 0.16 + volumeScore * 0.1 - falsePenalty), 0, 100);
+}
+
+function attemptAnalytics(result) {
+  const reactions = (result.reactions || []).map(Number).filter(Number.isFinite);
+  const attempts = (result.hits || 0) + (result.misses || 0) + (result.falseHits || 0);
+  const falseRate = attempts ? `${Math.round(((result.falseHits || 0) / attempts) * 100)}%` : "--";
+  const totalSeconds = parseSeconds(result.totalTime);
+  const pace = totalSeconds && result.hits ? `${(result.hits / (totalSeconds / 60)).toFixed(1)}/min` : "--";
+  if (reactions.length < 2) {
+    return { consistency: "--", falseRate, pace, spread: "--", fatigue: "--" };
+  }
+  const spread = Math.max(...reactions) - Math.min(...reactions);
+  const first = avg(reactions.slice(0, Math.ceil(reactions.length / 2)));
+  const second = avg(reactions.slice(Math.ceil(reactions.length / 2)));
+  const fatigue = second - first;
+  return {
+    consistency: spread < 180 ? "High" : spread < 350 ? "Medium" : "Low",
+    falseRate,
+    pace,
+    spread: `${Math.round(spread)}ms`,
+    fatigue: `${fatigue >= 0 ? "+" : ""}${Math.round(fatigue)}ms`
+  };
+}
+
+function attemptInsights(result, analytics) {
+  const insights = [];
+  const accuracy = parsePercent(result.accuracy);
+  const score = attemptScoreValue(result);
+  if (score >= 85) insights.push("Excellent all-round attempt: speed and accuracy were both strong.");
+  else if (score >= 70) insights.push("Solid attempt with room to sharpen either speed or precision.");
+  else insights.push("Useful baseline attempt. Focus on clean hits before chasing speed.");
+  if (accuracy >= 90) insights.push("Accuracy was high, so the player can safely push reaction speed.");
+  else if (accuracy < 75) insights.push("Accuracy was the limiting factor. Slow the drill slightly or simplify the colors.");
+  if ((result.falseHits || 0) > 0) insights.push("False hits suggest impulse control or distractor filtering needs attention.");
+  if (analytics.consistency === "Low") insights.push("Reaction consistency was low; repeat the same preset to build steadier responses.");
+  if (!result.leaderboardEligible) insights.push("This was an unsaved custom run, so it is excluded from preset leaderboards.");
+  return insights.slice(0, 4);
 }
 
 function presetToRow(preset) {
@@ -1720,6 +1805,7 @@ function rowToResult(row) {
     avgReaction: row.avg_reaction,
     bestReaction: row.best_reaction,
     totalTime: row.total_time,
+    score: row.score || 0,
     config: row.config
   };
 }
@@ -1832,6 +1918,16 @@ function uid(prefix) {
 function parseMs(value) {
   const parsed = Number(String(value || "").replace("ms", ""));
   return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+function parsePercent(value) {
+  const parsed = Number(String(value || "").replace("%", ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseSeconds(value) {
+  const parsed = Number(String(value || "").replace("s", ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function csvCell(value) {

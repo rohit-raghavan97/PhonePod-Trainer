@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.15 - 2026-05-06
+
+- Added descriptions for custom presets.
+- Included saved custom presets in leaderboard grouping.
+- Upgraded the Results page with summary cards, attempt scores, detail analytics, and coach-style insights.
+
 ## v1.14 - 2026-05-06
 
 - Cleaned up preset list cards with separate rows for name, description, key configuration, and colors.
