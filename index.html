@@ -325,6 +325,7 @@
         <h2>Add Player</h2>
         <label>Player name <input id="newPlayerName" required placeholder="Player name" /></label>
         <label>Short note <input id="newPlayerNote" placeholder="Optional: sport, group, role" /></label>
+        <p class="status-note" id="playerStatus"></p>
         <div class="form-actions">
           <button class="secondary-button" value="cancel" type="button" id="cancelPlayerButton">Cancel</button>
           <button class="primary-button" type="submit">Save player</button>
@@ -349,7 +350,7 @@
         <label>Preset name <input id="customPresetName" required placeholder="My reaction drill" /></label>
         <div class="form-actions">
           <button class="secondary-button" id="cancelCustomPresetButton" type="button">Cancel</button>
-          <button class="primary-button" type="submit">Save preset</button>
+          <button class="primary-button" id="customPresetSubmitButton" type="submit">Save preset</button>
         </div>
       </form>
     </dialog>

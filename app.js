@@ -99,6 +99,8 @@ const state = {
   user: null,
   players: [],
   customPresets: [],
+  editingPresetId: null,
+  editingPresetName: "",
   network: {
     role: "solo",
     peer: null,
@@ -111,6 +113,14 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
+
+function normalizeName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function cleanName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
 
 const fields = [
   "activityMode",
@@ -327,13 +337,19 @@ function saveProfile(event) {
 function openPlayerDialog() {
   $("newPlayerName").value = "";
   $("newPlayerNote").value = "";
+  $("playerStatus").textContent = "";
   $("playerDialog").showModal();
 }
 
 function savePlayer(event) {
   event.preventDefault();
-  const name = $("newPlayerName").value.trim();
+  const name = cleanName($("newPlayerName").value);
   if (!name) return;
+  const duplicate = state.players.some((player) => normalizeName(player.name) === normalizeName(name));
+  if (duplicate) {
+    $("playerStatus").textContent = `${name} already exists. Choose the existing player or change the name.`;
+    return;
+  }
   state.players.push({ id: uid("player"), name, note: $("newPlayerNote").value.trim() });
   savePlayers();
   $("playerDialog").close();
@@ -1265,14 +1281,16 @@ function applyPreset(id) {
   if (!preset) return;
   const playerName = $("playerName")?.value || state.config.playerName;
   writeConfig({ ...preset.config, playerName });
+  clearPresetEditState();
   if ($("presetDialog").open) $("presetDialog").close();
   showPage("play");
   setPresetStatus(`${preset.name} loaded.`);
 }
 
 function openSavePresetDialog() {
-  $("editingPresetId").value = "";
-  $("customPresetName").value = "";
+  $("editingPresetId").value = state.editingPresetId || "";
+  $("customPresetName").value = state.editingPresetName || "";
+  $("customPresetSubmitButton").textContent = state.editingPresetId ? "Update preset" : "Save preset";
   $("savePresetDialog").showModal();
 }
 
@@ -1288,8 +1306,9 @@ function saveCustomPreset(event) {
   else state.customPresets.push(preset);
   saveCustomPresets();
   state.config.presetId = id;
+  clearPresetEditState();
   $("savePresetDialog").close();
-  setPresetStatus(`${name} saved.`);
+  setPresetStatus(existing >= 0 ? `${name} updated.` : `${name} saved.`);
   renderPresets();
 }
 
@@ -1298,16 +1317,28 @@ function editCustomPreset(id) {
   if (!preset) return;
   writeConfig(preset.config);
   $("presetDialog").close();
-  $("editingPresetId").value = preset.id;
-  $("customPresetName").value = preset.name;
-  $("savePresetDialog").showModal();
+  state.editingPresetId = preset.id;
+  state.editingPresetName = preset.name;
+  $("savePresetButton").textContent = "Update custom preset";
+  setPresetStatus(`Editing ${preset.name}. Change any setup field, then update the custom preset.`);
+  showPage("play");
 }
 
 function deleteCustomPreset(id) {
   state.customPresets = state.customPresets.filter((preset) => preset.id !== id);
+  if (state.editingPresetId === id) clearPresetEditState();
   saveCustomPresets();
   renderPresets();
   setPresetStatus("Custom preset deleted.");
+}
+
+function clearPresetEditState() {
+  state.editingPresetId = null;
+  state.editingPresetName = "";
+  if ($("editingPresetId")) $("editingPresetId").value = "";
+  if ($("customPresetName")) $("customPresetName").value = "";
+  if ($("savePresetButton")) $("savePresetButton").textContent = "Save custom preset";
+  if ($("customPresetSubmitButton")) $("customPresetSubmitButton").textContent = "Save preset";
 }
 
 function setPresetStatus(message) {
