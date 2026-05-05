@@ -201,7 +201,9 @@ function bindControls() {
 
   $("startButton").addEventListener("click", startRun);
   $("pauseButton").addEventListener("click", togglePause);
+  $("gamePauseButton").addEventListener("click", togglePause);
   $("resetButton").addEventListener("click", resetRun);
+  $("gameResetButton").addEventListener("click", resetRun);
   $("podButton").addEventListener("click", handleTap);
   $("loadPresetButton").addEventListener("click", openPresetPicker);
   $("exportButton").addEventListener("click", exportCsv);
@@ -221,7 +223,7 @@ function bindControls() {
   $("registrationForm").addEventListener("submit", saveRegistration);
   $("profileForm").addEventListener("submit", saveProfile);
   $("openPlayerButton").addEventListener("click", openPlayerDialog);
-  $("profileAddPlayerButton").addEventListener("click", openPlayerDialog);
+  $("playersAddPlayerButton").addEventListener("click", openPlayerDialog);
   $("cancelPlayerButton").addEventListener("click", () => $("playerDialog").close());
   $("playerForm").addEventListener("submit", savePlayer);
   $("closePresetDialogButton").addEventListener("click", () => $("presetDialog").close());
@@ -241,6 +243,7 @@ function showPage(page) {
     renderHistory();
     renderResultDetail();
   }
+  if (page === "players") renderPlayers();
   if (page === "leaderboards") renderLeaderboards();
 }
 
@@ -331,11 +334,11 @@ function renderPlayers() {
     $("playerName").value = state.players.some((player) => player.name === selected) ? selected : $("playerName").options[0]?.value;
     state.config.playerName = $("playerName").value || defaults.playerName;
   }
-  const html = state.players.length
-    ? state.players.map((player) => `<article class="player-card"><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.note || "Player")}</span></article>`).join("")
+  const sortedPlayers = [...state.players].sort((a, b) => a.name.localeCompare(b.name));
+  const html = sortedPlayers.length
+    ? sortedPlayers.map((player) => `<button class="player-card selectable-card" data-player-id="${player.id}" type="button"><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.note || "Player")}</span></button>`).join("")
     : `<p class="panel-copy">No players yet.</p>`;
   if ($("playerList")) $("playerList").innerHTML = html;
-  if ($("profilePlayerList")) $("profilePlayerList").innerHTML = html;
 }
 
 function renderProfile() {
@@ -508,6 +511,7 @@ function handlePodMessage(message) {
   if (message.type === "done") {
     state.status = "finished";
     document.body.classList.remove("is-playing");
+    exitFullscreen();
     state.activeColor = null;
     state.lastSummary = message.summary || null;
     render();
@@ -516,6 +520,7 @@ function handlePodMessage(message) {
   if (message.type === "idle") {
     state.status = "idle";
     document.body.classList.remove("is-playing");
+    exitFullscreen();
     state.activeColor = null;
     render();
   }
@@ -662,6 +667,7 @@ function startRun() {
   clearTimers();
   enterFullscreen();
   document.body.classList.add("is-playing");
+  showPage("play");
   broadcastToPods({ type: "fullscreen" });
   Object.assign(state, {
     status: "countdown",
@@ -738,6 +744,7 @@ function beginCycle(cycleNumber) {
 function resetRun() {
   clearTimers();
   document.body.classList.remove("is-playing");
+  exitFullscreen();
   if (state.network.role !== "pod") {
     broadcastToPods({ type: "idle", label: "Ready", subcopy: "Waiting for host." });
   }
@@ -897,6 +904,7 @@ function finishRun() {
   state.status = "finished";
   clearTimers();
   document.body.classList.remove("is-playing");
+  exitFullscreen();
   sendToPod(state.activePodId, { type: "clear", token: state.lightToken });
   state.activeColor = null;
   state.lightToken += 1;
@@ -907,6 +915,7 @@ function finishRun() {
   saveResult();
   render();
   renderHistory();
+  showPage("results");
 }
 
 function shouldEndCycle() {
@@ -1196,7 +1205,6 @@ function renderPresets() {
   const allPresets = [...defaultPresets, ...state.customPresets];
   const cards = allPresets.map((preset) => presetCard(preset)).join("");
   if ($("presetPicker")) $("presetPicker").innerHTML = cards;
-  if ($("homePresetList")) $("homePresetList").innerHTML = defaultPresets.map((preset) => presetCard(preset, true)).join("");
   document.querySelectorAll("[data-load-preset]").forEach((button) => {
     button.onclick = () => applyPreset(button.dataset.loadPreset);
   });
@@ -1360,17 +1368,17 @@ async function toggleWakeLock() {
     if (state.wakeLock) {
       await state.wakeLock.release();
       state.wakeLock = null;
-      $("wakeLockButton").textContent = "Awake";
+      $("wakeLockButton").checked = false;
     } else {
       state.wakeLock = await navigator.wakeLock.request("screen");
-      $("wakeLockButton").textContent = "Awake on";
+      $("wakeLockButton").checked = true;
       state.wakeLock.addEventListener("release", () => {
         state.wakeLock = null;
-        $("wakeLockButton").textContent = "Awake";
+        $("wakeLockButton").checked = false;
       });
     }
   } catch {
-    $("wakeLockButton").textContent = "Unavailable";
+    $("wakeLockButton").checked = false;
   }
 }
 
@@ -1387,6 +1395,11 @@ function enterFullscreen() {
   const target = $("playPage") || document.documentElement;
   if (document.fullscreenElement || !target.requestFullscreen) return;
   target.requestFullscreen().catch(() => {});
+}
+
+function exitFullscreen() {
+  if (!document.fullscreenElement || !document.exitFullscreen) return;
+  document.exitFullscreen().catch(() => {});
 }
 
 function podLabel(id) {

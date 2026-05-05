@@ -24,9 +24,10 @@
       <nav class="site-nav" aria-label="App pages">
         <button class="nav-button is-active" data-page="home" type="button">Home</button>
         <button class="nav-button" data-page="play" type="button">Play</button>
+        <button class="nav-button" data-page="players" type="button">Players</button>
         <button class="nav-button" data-page="results" type="button">Results</button>
         <button class="nav-button" data-page="guide" type="button">Guide</button>
-        <button class="nav-button" data-page="profile" type="button">Profile</button>
+        <button class="nav-button" data-page="profile" type="button">User Profile</button>
       </nav>
     </header>
 
@@ -40,34 +41,10 @@
               <p>Run solo drills, connect phones as pods, track results, and compare players on standard presets.</p>
             </div>
             <div class="home-actions">
-              <button class="primary-button nav-button" data-page="play" type="button">Start training</button>
-              <button class="secondary-button" id="homeHostButton" type="button">Host multi-device room</button>
-            </div>
-          </section>
-
-          <section class="home-panel">
-            <div class="section-heading">
-              <h2>Players</h2>
-              <button class="secondary-button compact-button" id="openPlayerButton" type="button">Add Player</button>
-            </div>
-            <div class="player-list" id="playerList"></div>
-          </section>
-
-          <section class="home-panel">
-            <div class="section-heading">
-              <h2>Default games</h2>
-              <button class="text-button nav-button" data-page="leaderboards" type="button">Leaderboards</button>
-            </div>
-            <div class="preset-list compact-list" id="homePresetList"></div>
-          </section>
-
-          <section class="home-panel">
-            <h2>Logo options</h2>
-            <p class="panel-copy">Current icon is selected, with two alternates kept in the repo for easy swapping.</p>
-            <div class="logo-options">
-              <article><img src="./icon.svg" alt="Pulse bolt logo" /><span>Pulse Bolt</span></article>
-              <article><img src="./logo-option-orbit.svg" alt="Orbit logo" /><span>Orbit</span></article>
-              <article><img src="./logo-option-strike.svg" alt="Strike logo" /><span>Strike</span></article>
+              <button class="primary-button nav-button" data-page="play" type="button">Start</button>
+              <button class="secondary-button nav-button" data-page="guide" type="button">Guide</button>
+              <button class="secondary-button" id="openPlayerButton" type="button">Add Player</button>
+              <button class="secondary-button" id="homeHostButton" type="button">Add Pods</button>
             </div>
           </section>
         </div>
@@ -81,7 +58,10 @@
                 <p class="eyebrow">Reflex</p>
                 <h1 id="modeTitle">Random Reaction</h1>
               </div>
-              <button class="icon-button" id="wakeLockButton" type="button" title="Keep screen awake">Awake</button>
+              <div class="game-actions">
+                <button class="secondary-button compact-button" id="gamePauseButton" type="button">Pause</button>
+                <button class="secondary-button compact-button" id="gameResetButton" type="button">Reset</button>
+              </div>
             </div>
 
             <button class="pod-screen is-idle" id="podButton" type="button" aria-label="Tap active color">
@@ -117,6 +97,11 @@
                 <h2>Game setup</h2>
                 <button class="secondary-button compact-button" id="loadPresetButton" type="button">Presets</button>
               </div>
+              <label class="toggle-row">
+                <span>Keep screen awake</span>
+                <input id="wakeLockButton" type="checkbox" />
+                <span class="switch-ui"></span>
+              </label>
               <label>
                 Activity
                 <select id="activityMode">
@@ -236,10 +221,24 @@
             <div class="result-list" id="historyList"></div>
           </section>
           <section class="home-panel">
-            <h2>Attempt details</h2>
+            <div class="section-heading">
+              <h2>Attempt details</h2>
+              <button class="text-button nav-button" data-page="leaderboards" type="button">Leaderboards</button>
+            </div>
             <div id="resultDetail" class="detail-panel"></div>
           </section>
         </div>
+      </section>
+
+      <section class="app-page" id="playersPage">
+        <div class="section-heading page-heading">
+          <div>
+            <p class="eyebrow">Players</p>
+            <h1>Player roster</h1>
+          </div>
+          <button class="primary-button compact-button" id="playersAddPlayerButton" type="button">Add Player</button>
+        </div>
+        <div class="player-list player-page-list" id="playerList"></div>
       </section>
 
       <section class="app-page" id="leaderboardsPage">
@@ -300,11 +299,8 @@
             <p class="status-note" id="profileStatus"></p>
           </section>
           <section class="home-panel">
-            <div class="section-heading">
-              <h2>Players</h2>
-              <button class="secondary-button compact-button" id="profileAddPlayerButton" type="button">Add Player</button>
-            </div>
-            <div class="player-list" id="profilePlayerList"></div>
+            <h2>Device identity</h2>
+            <p class="panel-copy">Connected pods use your name as their device label, for example: Rohit's device.</p>
           </section>
         </div>
       </section>
