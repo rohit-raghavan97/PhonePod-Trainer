@@ -1,5 +1,5 @@
-const cacheName = "reflex-v11";
-const assets = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./logo-option-orbit.svg", "./logo-option-strike.svg"];
+const cacheName = "reflex-v12";
+const assets = ["./", "./index.html", "./styles.css", "./app.js", "./backend-config.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./logo-option-orbit.svg", "./logo-option-strike.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(cacheName).then((cache) => cache.addAll(assets)).then(() => self.skipWaiting()));

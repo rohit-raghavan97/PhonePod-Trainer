@@ -69,6 +69,12 @@ const storageKeys = {
   history: "reflex:history"
 };
 
+const backendTables = {
+  players: "players",
+  customPresets: "custom_presets",
+  results: "results"
+};
+
 const state = {
   status: "idle",
   config: { ...defaults },
@@ -99,8 +105,14 @@ const state = {
   user: null,
   players: [],
   customPresets: [],
+  history: [],
   editingPresetId: null,
   editingPresetName: "",
+  backend: {
+    client: null,
+    ready: false,
+    message: "Local device storage"
+  },
   network: {
     role: "solo",
     peer: null,
@@ -142,8 +154,8 @@ const fields = [
   "distractorCount"
 ];
 
-function init() {
-  loadAppData();
+async function init() {
+  await loadAppData();
   buildColorControls();
   bindControls();
   loadPreset(false);
@@ -282,42 +294,87 @@ function autoJoinFromUrl() {
   joinRoom(room);
 }
 
-function loadAppData() {
+async function loadAppData() {
   state.user = JSON.parse(localStorage.getItem(storageKeys.user) || "null");
   state.players = JSON.parse(localStorage.getItem(storageKeys.players) || "[]");
   state.customPresets = JSON.parse(localStorage.getItem(storageKeys.customPresets) || "[]");
+  state.history = JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
+  state.backend.client = createBackendClient();
+  if (state.backend.client) {
+    await loadSharedData();
+  }
   if (state.user && !state.players.length) {
     state.players = [{ id: uid("player"), name: state.user.fullName, note: "Primary" }];
     savePlayers();
   }
 }
 
-function savePlayers() {
-  localStorage.setItem(storageKeys.players, JSON.stringify(state.players));
+function createBackendClient() {
+  const config = window.REFLEX_SUPABASE_CONFIG || {};
+  if (!config.url || !config.anonKey || !window.supabase?.createClient) return null;
+  return window.supabase.createClient(config.url, config.anonKey);
 }
 
-function saveCustomPresets() {
+async function loadSharedData() {
+  try {
+    const [players, presets, results] = await Promise.all([
+      state.backend.client.from(backendTables.players).select("id,name,note").order("name", { ascending: true }),
+      state.backend.client.from(backendTables.customPresets).select("id,name,description,config").order("name", { ascending: true }),
+      state.backend.client.from(backendTables.results).select("*").order("date", { ascending: false }).limit(100)
+    ]);
+    if (players.error || presets.error || results.error) throw players.error || presets.error || results.error;
+    state.players = players.data || [];
+    state.customPresets = (presets.data || []).map(rowToPreset);
+    state.history = (results.data || []).map(rowToResult);
+    state.backend.ready = true;
+    state.backend.message = "Shared Supabase storage";
+    cacheLocalData();
+  } catch {
+    state.backend.ready = false;
+    state.backend.message = "Using local storage. Check Supabase config.";
+  }
+}
+
+function cacheLocalData() {
+  localStorage.setItem(storageKeys.players, JSON.stringify(state.players));
   localStorage.setItem(storageKeys.customPresets, JSON.stringify(state.customPresets));
+  localStorage.setItem(storageKeys.history, JSON.stringify(state.history));
+}
+
+async function savePlayers() {
+  localStorage.setItem(storageKeys.players, JSON.stringify(state.players));
+  if (!state.backend.ready) return;
+  const { error } = await state.backend.client.from(backendTables.players).upsert(state.players, { onConflict: "id" });
+  if (error) throw error;
+}
+
+async function saveCustomPresets() {
+  localStorage.setItem(storageKeys.customPresets, JSON.stringify(state.customPresets));
+  if (!state.backend.ready) return;
+  const { error } = await state.backend.client.from(backendTables.customPresets).upsert(state.customPresets.map(presetToRow), { onConflict: "id" });
+  if (error) throw error;
 }
 
 function showRegistrationIfNeeded() {
   if (!state.user) $("registrationDialog").showModal();
 }
 
-function saveRegistration(event) {
+async function saveRegistration(event) {
   event.preventDefault();
   const fullName = $("registrationName").value.trim();
   if (!fullName) return;
   state.user = { fullName };
   localStorage.setItem(storageKeys.user, JSON.stringify(state.user));
-  state.players = [{ id: uid("player"), name: fullName, note: "Primary" }];
-  savePlayers();
+  if (!state.players.some((player) => normalizeName(player.name) === normalizeName(fullName))) {
+    state.players.push({ id: uid("player"), name: fullName, note: "Primary" });
+  }
+  await savePlayers().catch(() => {});
   $("registrationDialog").close();
   renderPlayers();
   renderProfile();
 }
 
-function saveProfile(event) {
+async function saveProfile(event) {
   event.preventDefault();
   const fullName = $("profileName").value.trim();
   if (!fullName) return;
@@ -326,7 +383,7 @@ function saveProfile(event) {
   localStorage.setItem(storageKeys.user, JSON.stringify(state.user));
   if (previous && state.players[0]?.name === previous) {
     state.players[0].name = fullName;
-    savePlayers();
+    await savePlayers().catch(() => {});
   }
   $("profileStatus").textContent = "Profile saved.";
   renderPlayers();
@@ -341,7 +398,7 @@ function openPlayerDialog() {
   $("playerDialog").showModal();
 }
 
-function savePlayer(event) {
+async function savePlayer(event) {
   event.preventDefault();
   const name = cleanName($("newPlayerName").value);
   if (!name) return;
@@ -350,8 +407,15 @@ function savePlayer(event) {
     $("playerStatus").textContent = `${name} already exists. Choose the existing player or change the name.`;
     return;
   }
-  state.players.push({ id: uid("player"), name, note: $("newPlayerNote").value.trim() });
-  savePlayers();
+  const player = { id: uid("player"), name, note: $("newPlayerNote").value.trim() };
+  state.players.push(player);
+  try {
+    await savePlayers();
+  } catch {
+    state.players = state.players.filter((item) => item.id !== player.id);
+    $("playerStatus").textContent = `${name} could not be saved. It may already exist globally.`;
+    return;
+  }
   $("playerDialog").close();
   renderPlayers();
 }
@@ -1294,17 +1358,24 @@ function openSavePresetDialog() {
   $("savePresetDialog").showModal();
 }
 
-function saveCustomPreset(event) {
+async function saveCustomPreset(event) {
   event.preventDefault();
   const id = $("editingPresetId").value || uid("preset");
   const name = $("customPresetName").value.trim();
   if (!name) return;
   const config = { ...readConfig(), presetId: id };
   const existing = state.customPresets.findIndex((preset) => preset.id === id);
+  const previousPresets = [...state.customPresets];
   const preset = { id, type: "custom", name, description: "Custom game", config };
   if (existing >= 0) state.customPresets[existing] = preset;
   else state.customPresets.push(preset);
-  saveCustomPresets();
+  try {
+    await saveCustomPresets();
+  } catch {
+    state.customPresets = previousPresets;
+    setPresetStatus(`${name} could not be saved globally. Try again.`);
+    return;
+  }
   state.config.presetId = id;
   clearPresetEditState();
   $("savePresetDialog").close();
@@ -1324,10 +1395,13 @@ function editCustomPreset(id) {
   showPage("play");
 }
 
-function deleteCustomPreset(id) {
+async function deleteCustomPreset(id) {
   state.customPresets = state.customPresets.filter((preset) => preset.id !== id);
   if (state.editingPresetId === id) clearPresetEditState();
-  saveCustomPresets();
+  localStorage.setItem(storageKeys.customPresets, JSON.stringify(state.customPresets));
+  if (state.backend.ready) {
+    await state.backend.client.from(backendTables.customPresets).delete().eq("id", id);
+  }
   renderPresets();
   setPresetStatus("Custom preset deleted.");
 }
@@ -1369,13 +1443,76 @@ function saveResult() {
     totalTime: summary.totalTime,
     config: { ...state.config }
   };
-  const history = [result, ...getHistory()].slice(0, 50);
+  const history = [result, ...getHistory()].slice(0, 100);
+  state.history = history;
   state.selectedResultId = result.id;
   localStorage.setItem(storageKeys.history, JSON.stringify(history));
+  if (state.backend.ready) {
+    state.backend.client.from(backendTables.results).upsert(resultToRow(result), { onConflict: "id" });
+  }
 }
 
 function getHistory() {
-  return JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
+  return state.history.length ? state.history : JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
+}
+
+function presetToRow(preset) {
+  return {
+    id: preset.id,
+    name: preset.name,
+    description: preset.description || "Custom game",
+    config: preset.config
+  };
+}
+
+function rowToPreset(row) {
+  return {
+    id: row.id,
+    type: "custom",
+    name: row.name,
+    description: row.description || "Custom game",
+    config: row.config || defaults
+  };
+}
+
+function resultToRow(result) {
+  return {
+    id: result.id,
+    date: result.date,
+    player: result.player,
+    mode: result.mode,
+    preset_id: result.presetId,
+    preset_name: result.presetName,
+    leaderboard_eligible: result.leaderboardEligible,
+    hits: result.hits,
+    misses: result.misses,
+    false_hits: result.falseHits,
+    accuracy: result.accuracy,
+    avg_reaction: result.avgReaction,
+    best_reaction: result.bestReaction,
+    total_time: result.totalTime,
+    config: result.config
+  };
+}
+
+function rowToResult(row) {
+  return {
+    id: row.id,
+    date: row.date,
+    player: row.player,
+    mode: row.mode,
+    presetId: row.preset_id,
+    presetName: row.preset_name,
+    leaderboardEligible: row.leaderboard_eligible,
+    hits: row.hits,
+    misses: row.misses,
+    falseHits: row.false_hits,
+    accuracy: row.accuracy,
+    avgReaction: row.avg_reaction,
+    bestReaction: row.best_reaction,
+    totalTime: row.total_time,
+    config: row.config
+  };
 }
 
 function buildSummary() {

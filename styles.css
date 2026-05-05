@@ -16,6 +16,12 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   min-height: 100vh;
   margin: 0;
@@ -33,6 +39,8 @@ button,
 input,
 select {
   font: inherit;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .home-header {
@@ -52,8 +60,10 @@ select {
 .app-page {
   display: none;
   width: min(1180px, calc(100% - 2rem));
+  max-width: 100%;
   margin: 0 auto;
   padding: 1rem 0 4rem;
+  overflow-x: hidden;
 }
 
 .app-page.is-active {
@@ -486,10 +496,13 @@ body.is-playing .run-controls {
   grid-template-columns: minmax(320px, 1fr) minmax(320px, 420px);
   gap: 1rem;
   min-height: calc(100vh - 4.25rem);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .training-stage,
 .control-panel {
+  min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(23, 29, 34, 0.88);
   box-shadow: var(--shadow);
@@ -1157,7 +1170,7 @@ dd {
   }
 
   .app-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 0;
   }
 
