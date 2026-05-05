@@ -1,0 +1,23 @@
+# Changelog
+
+## 0.3.0 - 2026-05-05
+
+- Added Supabase-backed shared storage support for players, custom presets, and results.
+- Added duplicate checks for player creation.
+- Added full-field editing for custom presets through the setup screen.
+- Fixed Play page horizontal overflow caused by the hidden awake toggle input.
+- Added initial repo documentation and version tracking.
+
+## 0.2.0 - 2026-05-05
+
+- Renamed the app to Reflex.
+- Added the pulse bolt logo, app icons, and splash screen.
+- Split the app into Home, Play, Players, Results, Guide, and User Profile pages.
+- Added full-screen game mode with countdown, rest countdown, and live metrics.
+- Added result details and leaderboard views.
+
+## 0.1.0 - 2026-05-05
+
+- Initial static PWA prototype.
+- Added reaction training setup, color prompts, presets, and local results.
+- Added early multi-device room support.
