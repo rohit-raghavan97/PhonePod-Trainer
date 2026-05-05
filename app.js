@@ -40,6 +40,9 @@ const state = {
   runStartedAt: 0,
   cycleStartedAt: 0,
   pausedCycleElapsed: 0,
+  countdownValue: 0,
+  restEndsAt: 0,
+  lastSummary: null,
   cycle: 1,
   hits: 0,
   misses: 0,
@@ -305,6 +308,13 @@ function handlePodMessage(message) {
     render();
     return;
   }
+  if (message.type === "countdown") {
+    state.status = "countdown";
+    state.countdownValue = message.value;
+    state.activeColor = null;
+    render();
+    return;
+  }
   if (message.type === "clear") {
     if (message.token === state.lightToken) {
       state.activeColor = null;
@@ -315,14 +325,15 @@ function handlePodMessage(message) {
   }
   if (message.type === "rest") {
     state.status = "resting";
+    state.restEndsAt = performance.now() + message.seconds * 1000;
     state.activeColor = null;
-    $("podSubcopy").textContent = `${message.seconds}s`;
     render();
     return;
   }
   if (message.type === "done") {
     state.status = "finished";
     state.activeColor = null;
+    state.lastSummary = message.summary || null;
     render();
     return;
   }
@@ -473,13 +484,16 @@ function startRun() {
   state.config = readConfig();
   clearTimers();
   Object.assign(state, {
-    status: "running",
+    status: "countdown",
     activeColor: null,
     activeKind: "target",
     activePodId: "local",
     lightToken: state.lightToken + 1,
-    runStartedAt: performance.now(),
-    cycleStartedAt: performance.now(),
+    runStartedAt: 0,
+    cycleStartedAt: 0,
+    countdownValue: 3,
+    restEndsAt: 0,
+    lastSummary: null,
     cycle: 1,
     hits: 0,
     misses: 0,
@@ -491,8 +505,9 @@ function startRun() {
   });
   prepareSequence();
   startTicker();
+  broadcastToPods({ type: "countdown", value: state.countdownValue });
   render();
-  scheduleNextLight(250);
+  runCountdown(() => beginCycle(1));
 }
 
 function togglePause() {
@@ -512,6 +527,34 @@ function togglePause() {
   render();
 }
 
+function runCountdown(onComplete) {
+  if (state.status !== "countdown") return;
+  const timer = setTimeout(() => {
+    state.timers.delete(timer);
+    state.countdownValue -= 1;
+    if (state.countdownValue <= 0) {
+      broadcastToPods({ type: "idle", label: "Go", subcopy: "Watch for your color." });
+      onComplete();
+      return;
+    }
+    broadcastToPods({ type: "countdown", value: state.countdownValue });
+    render();
+    runCountdown(onComplete);
+  }, 1000);
+  state.timers.add(timer);
+}
+
+function beginCycle(cycleNumber) {
+  state.cycle = cycleNumber;
+  state.cycleStartedAt = performance.now();
+  if (!state.runStartedAt) state.runStartedAt = state.cycleStartedAt;
+  state.status = "running";
+  state.restEndsAt = 0;
+  prepareSequence();
+  render();
+  scheduleNextLight(250);
+}
+
 function resetRun() {
   clearTimers();
   if (state.network.role !== "pod") {
@@ -523,6 +566,9 @@ function resetRun() {
     activeKind: "target",
     activePodId: "local",
     lightToken: state.lightToken + 1,
+    countdownValue: 0,
+    restEndsAt: 0,
+    lastSummary: null,
     cycle: 1,
     hits: 0,
     misses: 0,
@@ -607,7 +653,6 @@ function handleTap() {
   if (state.status !== "running") return;
 
   if (state.activePodId !== "local") {
-    markWrongTap();
     return;
   }
 
@@ -656,17 +701,13 @@ function finishCycle() {
   if (state.cycle >= state.config.cycles) return finishRun();
 
   state.status = "resting";
+  state.restEndsAt = performance.now() + state.config.restSeconds * 1000;
   broadcastToPods({ type: "rest", seconds: state.config.restSeconds });
   render();
   const timer = setTimeout(() => {
     state.timers.delete(timer);
-    state.cycle += 1;
-    state.cycleStartedAt = performance.now();
-    state.status = "running";
-    prepareSequence();
     broadcastToPods({ type: "idle", label: "Ready", subcopy: "Watch for your color." });
-    render();
-    scheduleNextLight(250);
+    beginCycle(state.cycle + 1);
   }, state.config.restSeconds * 1000);
   state.timers.add(timer);
 }
@@ -677,7 +718,10 @@ function finishRun() {
   sendToPod(state.activePodId, { type: "clear", token: state.lightToken });
   state.activeColor = null;
   state.lightToken += 1;
-  broadcastToPods({ type: "done", hits: state.hits });
+  state.restEndsAt = 0;
+  state.countdownValue = 0;
+  state.lastSummary = buildSummary();
+  broadcastToPods({ type: "done", hits: state.hits, summary: state.lastSummary });
   saveResult();
   render();
   renderHistory();
@@ -712,7 +756,10 @@ function prepareSequence() {
 
 function startTicker() {
   if (state.tickTimer) clearInterval(state.tickTimer);
-  state.tickTimer = setInterval(renderStats, 200);
+  state.tickTimer = setInterval(() => {
+    renderStats();
+    if (state.status === "resting") renderStage();
+  }, 200);
 }
 
 function clearTimers() {
@@ -743,7 +790,11 @@ function renderStage() {
   const subcopy = $("podSubcopy");
   button.className = "pod-screen";
 
-  if (state.status === "running" && state.activeColor && (state.activePodId === "local" || state.network.role === "pod")) {
+  if (state.status === "countdown") {
+    button.classList.add("is-resting");
+    label.textContent = String(state.countdownValue || 3);
+    subcopy.textContent = "Get ready";
+  } else if (state.status === "running" && state.activeColor && (state.activePodId === "local" || state.network.role === "pod")) {
     const textColor = state.activeColor.name === "Yellow" || state.activeColor.name === "White" ? "#101418" : "#ffffff";
     button.classList.add("is-active");
     button.style.background = state.activeColor.value;
@@ -751,21 +802,22 @@ function renderStage() {
     button.style.setProperty("--active-glow", state.activeColor.value);
     label.textContent = state.activeColor.name;
     subcopy.textContent = state.activeKind === "distractor" ? "Hold" : "Tap";
-    return;
+  } else {
+    button.style.background = "";
+    button.style.color = "";
+    button.style.removeProperty("--active-glow");
   }
 
-  button.style.background = "";
-  button.style.color = "";
-  button.style.removeProperty("--active-glow");
-
-  if (state.status === "running" && state.activeColor && state.activePodId !== "local") {
+  if (state.status === "countdown") {
+    // Countdown state is rendered above.
+  } else if (state.status === "running" && state.activeColor && state.activePodId !== "local" && state.network.role !== "pod") {
     button.classList.add("is-idle");
     label.textContent = podLabel(state.activePodId);
     subcopy.textContent = `${state.activeColor.name} is live on another phone.`;
   } else if (state.status === "resting") {
     button.classList.add("is-resting");
     label.textContent = "Rest";
-    subcopy.textContent = `${state.config.restSeconds}s`;
+    subcopy.textContent = `${restSecondsLeft()}s until next cycle`;
   } else if (state.status === "paused") {
     button.classList.add("is-idle");
     label.textContent = "Paused";
@@ -773,14 +825,16 @@ function renderStage() {
   } else if (state.status === "finished") {
     button.classList.add("is-idle");
     label.textContent = "Done";
-    subcopy.textContent = `${state.hits} hits`;
+    subcopy.textContent = summaryLine();
   } else {
     button.classList.add("is-idle");
     label.textContent = state.network.role === "pod" ? "Pod ready" : "Ready";
     subcopy.textContent = state.network.role === "pod" ? "Waiting for host." : "Configure, start, tap.";
   }
 
-  $("startButton").disabled = state.network.role === "pod" || state.status === "running" || state.status === "resting";
+  renderStageSummary();
+
+  $("startButton").disabled = state.network.role === "pod" || state.status === "countdown" || state.status === "running" || state.status === "resting";
   $("pauseButton").disabled = state.network.role === "pod" || (state.status !== "running" && state.status !== "paused");
   $("pauseButton").textContent = state.status === "paused" ? "Resume" : "Pause";
 }
@@ -790,23 +844,48 @@ function renderStats() {
   $("avgReaction").textContent = state.reactions.length ? `${Math.round(avg(state.reactions))}ms` : "--";
   $("cycleValue").textContent = `${state.cycle}/${state.config.cycles}`;
 
-  if (state.config.durationMode === "hits") {
+  if (state.status === "countdown") {
+    $("remainingValue").textContent = `${state.countdownValue || 3}s`;
+  } else if (state.status === "resting") {
+    $("remainingValue").textContent = `${restSecondsLeft()}s`;
+  } else if (state.config.durationMode === "hits") {
     $("remainingValue").textContent = Math.max(0, state.config.hitTarget - state.hits);
   } else {
     const left = Math.max(0, state.config.timeLimit - Math.floor(elapsedCycleMs() / 1000));
-    $("remainingValue").textContent = state.status === "idle" ? `${state.config.timeLimit}s` : `${left}s`;
+    $("remainingValue").textContent = state.status === "idle" || state.status === "finished" ? `${state.config.timeLimit}s` : `${left}s`;
   }
 }
 
 function renderResults() {
   const best = state.reactions.length ? `${Math.round(Math.min(...state.reactions))}ms` : "--";
+  const summary = state.lastSummary || buildSummary();
   $("currentResults").innerHTML = `
     <dt>Player</dt><dd>${escapeHtml(state.config.playerName)}</dd>
     <dt>Mode</dt><dd>${titleForMode(state.config.activityMode)}</dd>
     <dt>Hits</dt><dd>${state.hits}</dd>
     <dt>Misses</dt><dd>${state.misses}</dd>
     <dt>False hits</dt><dd>${state.falseHits}</dd>
+    <dt>Accuracy</dt><dd>${summary.accuracy}</dd>
     <dt>Best reaction</dt><dd>${best}</dd>
+  `;
+}
+
+function renderStageSummary() {
+  const summaryEl = $("stageSummary");
+  if (!summaryEl) return;
+  if (state.status !== "finished" || !state.lastSummary) {
+    summaryEl.classList.remove("is-visible");
+    summaryEl.innerHTML = "";
+    return;
+  }
+  const summary = state.lastSummary;
+  summaryEl.classList.add("is-visible");
+  summaryEl.innerHTML = `
+    <h2>Round summary</h2>
+    <div class="summary-stat"><strong>${summary.hits}</strong><span>Hits</span></div>
+    <div class="summary-stat"><strong>${summary.avgReaction}</strong><span>Avg reaction</span></div>
+    <div class="summary-stat"><strong>${summary.bestReaction}</strong><span>Best reaction</span></div>
+    <div class="summary-stat"><strong>${summary.accuracy}</strong><span>Accuracy</span></div>
   `;
 }
 
@@ -869,6 +948,7 @@ function loadPreset(showMissing) {
 }
 
 function saveResult() {
+  const summary = state.lastSummary || buildSummary();
   const result = {
     date: new Date().toISOString(),
     player: state.config.playerName,
@@ -876,8 +956,9 @@ function saveResult() {
     hits: state.hits,
     misses: state.misses,
     falseHits: state.falseHits,
-    avgReaction: state.reactions.length ? `${Math.round(avg(state.reactions))}ms` : "",
-    bestReaction: state.reactions.length ? `${Math.round(Math.min(...state.reactions))}ms` : ""
+    accuracy: summary.accuracy,
+    avgReaction: summary.avgReaction === "--" ? "" : summary.avgReaction,
+    bestReaction: summary.bestReaction === "--" ? "" : summary.bestReaction
   };
   const history = [result, ...getHistory()].slice(0, 50);
   localStorage.setItem("phonepod:history", JSON.stringify(history));
@@ -885,6 +966,30 @@ function saveResult() {
 
 function getHistory() {
   return JSON.parse(localStorage.getItem("phonepod:history") || "[]");
+}
+
+function buildSummary() {
+  const attempts = state.hits + state.misses + state.falseHits;
+  const accuracy = attempts ? `${Math.round((state.hits / attempts) * 100)}%` : "--";
+  return {
+    hits: state.hits,
+    misses: state.misses,
+    falseHits: state.falseHits,
+    accuracy,
+    avgReaction: state.reactions.length ? `${Math.round(avg(state.reactions))}ms` : "--",
+    bestReaction: state.reactions.length ? `${Math.round(Math.min(...state.reactions))}ms` : "--",
+    totalTime: state.runStartedAt ? `${Math.round((performance.now() - state.runStartedAt) / 1000)}s` : "--"
+  };
+}
+
+function summaryLine() {
+  const summary = state.lastSummary || buildSummary();
+  return `${summary.hits} hits - ${summary.avgReaction} avg - ${summary.accuracy} accuracy`;
+}
+
+function restSecondsLeft() {
+  if (!state.restEndsAt) return state.config.restSeconds;
+  return Math.max(0, Math.ceil((state.restEndsAt - performance.now()) / 1000));
 }
 
 function exportCsv() {

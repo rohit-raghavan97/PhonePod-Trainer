@@ -206,6 +206,43 @@ h2 {
   text-align: center;
 }
 
+.stage-summary {
+  display: none;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.7rem;
+}
+
+.stage-summary.is-visible {
+  display: grid;
+}
+
+.stage-summary h2 {
+  grid-column: 1 / -1;
+  font-size: 1rem;
+}
+
+.summary-stat {
+  min-width: 0;
+  padding: 0.65rem;
+  border-radius: 8px;
+  background: #10161b;
+}
+
+.summary-stat strong {
+  display: block;
+  font-size: clamp(1rem, 2.5vw, 1.55rem);
+}
+
+.summary-stat span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
 .metric-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -675,6 +712,7 @@ dd {
 
 @media (max-width: 520px) {
   .metric-strip,
+  .stage-summary,
   .two-col,
   .mode-options {
     grid-template-columns: repeat(2, 1fr);
