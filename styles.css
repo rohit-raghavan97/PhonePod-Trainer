@@ -256,35 +256,88 @@ textarea {
   margin-bottom: 1rem;
 }
 
-.trend-bars {
-  display: flex;
-  align-items: end;
-  gap: 0.45rem;
+.trend-chart {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.trend-chart svg {
+  width: 100%;
   min-height: 10rem;
-  padding: 1rem 0 0.4rem;
+  border-radius: 8px;
+  background: #10161b;
 }
 
-.trend-bars span {
-  position: relative;
-  flex: 1;
-  min-height: 1.2rem;
-  border-radius: 8px 8px 3px 3px;
-  background: linear-gradient(180deg, var(--accent), #2f80ff);
+.trend-chart line {
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1;
 }
 
-.trend-bars small {
-  position: absolute;
-  left: 50%;
-  bottom: -1.4rem;
-  transform: translateX(-50%);
-  color: var(--muted);
+.trend-chart polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-chart circle {
+  fill: #10161b;
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.trend-chart text {
+  fill: var(--muted);
   font-size: 0.68rem;
+  text-anchor: middle;
+}
+
+.trend-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.trend-caption strong {
+  color: var(--accent);
+}
+
+.single-chart,
+.empty-chart {
+  min-height: 10rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #10161b;
 }
 
 .preset-performance-list {
   display: grid;
   gap: 0.75rem;
   margin-top: 0.8rem;
+}
+
+.admin-dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-activity-row {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #10161b;
+  padding: 0.8rem;
+}
+
+.admin-activity-row span {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .preset-performance-list div {

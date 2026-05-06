@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18 - 2026-05-06
+
+- Replaced player profile trend bars with a line chart that better shows improvement over attempts.
+- Added an Admin page for sync health, cloud activity counts, and recent activity.
+- Improved scoring weights by preset type: Random, Focus, Sequence, and Home Base now emphasize different skills.
+
 ## v1.17 - 2026-05-06
 
 - Added selectable player profile pages from the Players roster.

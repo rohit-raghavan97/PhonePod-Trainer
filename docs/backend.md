@@ -37,6 +37,8 @@ Never put a Supabase secret key or service-role key in this frontend app.
 
 For the `v1.13` update, run `supabase-v1.13-migration.sql` in the Supabase SQL Editor. It adds hidden app-user tracking and database-level duplicate protection for custom preset names/rules.
 
+For the `v1.18` update, run `supabase-v1.18-migration.sql` in the Supabase SQL Editor. It adds a safe admin summary function that returns user counts without exposing the user list.
+
 ## Current Security Model
 
 The current prototype intentionally allows anyone with the app link to read and write shared players, custom presets, and results. Registered app users are written to `app_users` for owner-side usage tracking, but the app does not read or display that table.

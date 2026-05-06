@@ -28,6 +28,7 @@
         <button class="nav-button" data-page="players" type="button">Players</button>
         <button class="nav-button" data-page="results" type="button">Results</button>
         <button class="nav-button" data-page="guide" type="button">Guide</button>
+        <button class="nav-button" data-page="admin" type="button">Admin</button>
         <button class="nav-button" data-page="profile" type="button">User Profile</button>
       </nav>
     </header>
@@ -355,6 +356,17 @@
             <p class="panel-copy">Connected pods use your name as their device label, for example: Rohit's device.</p>
           </section>
         </div>
+      </section>
+
+      <section class="app-page" id="adminPage">
+        <div class="section-heading page-heading">
+          <div>
+            <p class="eyebrow">Admin</p>
+            <h1>Sync health and activity</h1>
+          </div>
+          <button class="secondary-button compact-button" id="refreshAdminButton" type="button">Refresh</button>
+        </div>
+        <div id="adminContent" class="admin-dashboard"></div>
       </section>
     </main>
 

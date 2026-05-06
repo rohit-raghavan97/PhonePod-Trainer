@@ -111,6 +111,8 @@ const state = {
   history: [],
   selectedPresetId: "",
   selectedPlayerId: "",
+  adminStats: null,
+  adminLoading: false,
   currentPage: "home",
   isHandlingPopState: false,
   editingPresetId: null,
@@ -259,6 +261,7 @@ function bindControls() {
   $("profileForm").addEventListener("submit", saveProfile);
   $("openPlayerButton").addEventListener("click", openPlayerDialog);
   $("playersAddPlayerButton").addEventListener("click", openPlayerDialog);
+  $("refreshAdminButton").addEventListener("click", () => refreshAdminStats(true));
   $("playerList").addEventListener("click", (event) => {
     const card = event.target.closest("[data-player-id]");
     if (card) openPlayerProfile(card.dataset.playerId);
@@ -297,6 +300,7 @@ function showPage(page, options = {}) {
   }
   if (page === "players") renderPlayers();
   if (page === "playerProfile") renderPlayerProfile();
+  if (page === "admin") renderAdmin();
   if (page === "leaderboards") renderLeaderboards();
   if (page === "presets") renderPresets();
   if (page === "presetDetail" && state.selectedPresetId) renderPresetDetail();
@@ -369,8 +373,10 @@ async function loadSharedData() {
     state.history = mergeResults((results.data || []).map(rowToResult), localHistory);
     state.backend.ready = true;
     state.backend.message = "Shared Supabase storage";
+    state.backend.lastSyncedAt = new Date().toISOString();
     cacheLocalData();
     syncSharedData().catch(() => {});
+    refreshAdminStats(false).catch(() => {});
   } catch {
     state.backend.ready = false;
     state.backend.message = "Using local storage. Check Supabase config.";
@@ -404,6 +410,42 @@ async function syncSharedData() {
     state.customPresets.length ? state.backend.client.from(backendTables.customPresets).upsert(state.customPresets.map(presetToRow), { onConflict: "id" }) : Promise.resolve(),
     state.history.length ? state.backend.client.from(backendTables.results).upsert(state.history.map(resultToRow), { onConflict: "id" }) : Promise.resolve()
   ]);
+  state.backend.lastSyncedAt = new Date().toISOString();
+}
+
+async function refreshAdminStats(force = false) {
+  if (!state.backend.ready || state.adminLoading || (state.adminStats && !force)) return;
+  state.adminLoading = true;
+  try {
+    const [players, presets, results, users] = await Promise.all([
+      state.backend.client.from(backendTables.players).select("id", { count: "exact", head: true }),
+      state.backend.client.from(backendTables.customPresets).select("id", { count: "exact", head: true }),
+      state.backend.client.from(backendTables.results).select("id,date,player,preset_name", { count: "exact" }).order("date", { ascending: false }).limit(5),
+      state.backend.client.rpc("get_reflex_admin_summary")
+    ]);
+    state.adminStats = {
+      players: players.count ?? state.players.length,
+      presets: presets.count ?? state.customPresets.length,
+      results: results.count ?? state.history.length,
+      recentResults: results.data || [],
+      registeredUsers: users.error ? "Run v1.18 SQL" : users.data?.registeredUsers ?? users.data?.registered_users ?? "--",
+      recentUsers: users.data?.recentUsers ?? users.data?.recent_users ?? "--",
+      lastSeen: users.data?.lastSeen || users.data?.last_seen || ""
+    };
+  } catch {
+    state.adminStats = {
+      players: state.players.length,
+      presets: state.customPresets.length,
+      results: state.history.length,
+      recentResults: state.history.slice(0, 5).map(resultToRow),
+      registeredUsers: "Run v1.18 SQL",
+      recentUsers: "--",
+      lastSeen: ""
+    };
+  } finally {
+    state.adminLoading = false;
+    renderAdmin();
+  }
 }
 
 async function trackAppUser() {
@@ -544,7 +586,7 @@ function renderPlayerProfile() {
     <section class="profile-grid-wide">
       <article class="home-panel">
         <h2>Improvement trend</h2>
-        <div class="trend-bars">${profile.trend.map((item) => `<span style="height:${item.height}%"><small>${item.label}</small></span>`).join("")}</div>
+        ${renderTrendChart(profile.trend)}
         <p class="panel-copy">${escapeHtml(profile.trendInsight)}</p>
       </article>
       <article class="home-panel">
@@ -582,6 +624,45 @@ function renderPlayerProfile() {
       showPage("results");
     });
   });
+}
+
+function renderAdmin() {
+  if (!$("adminContent")) return;
+  if (!state.adminStats && state.backend.ready) refreshAdminStats(false);
+  const stats = state.adminStats || {};
+  const pendingLocal = state.history.length;
+  $("adminContent").innerHTML = `
+    <section class="player-stat-grid">
+      <article><strong>${state.backend.ready ? "Online" : "Local"}</strong><span>Storage mode</span></article>
+      <article><strong>${stats.registeredUsers ?? "--"}</strong><span>Registered devices</span></article>
+      <article><strong>${stats.results ?? state.history.length}</strong><span>Cloud attempts</span></article>
+      <article><strong>${formatAdminDate(state.backend.lastSyncedAt)}</strong><span>Last sync</span></article>
+    </section>
+    <section class="profile-grid-wide">
+      <article class="home-panel">
+        <h2>Sync health</h2>
+        <dl>
+          <dt>Status</dt><dd>${escapeHtml(state.backend.message)}</dd>
+          <dt>Local attempts</dt><dd>${pendingLocal}</dd>
+          <dt>Players</dt><dd>${stats.players ?? state.players.length}</dd>
+          <dt>Custom presets</dt><dd>${stats.presets ?? state.customPresets.length}</dd>
+          <dt>Active this week</dt><dd>${stats.recentUsers ?? "--"}</dd>
+          <dt>Last user seen</dt><dd>${formatAdminDate(stats.lastSeen)}</dd>
+        </dl>
+      </article>
+      <article class="home-panel">
+        <h2>Recent activity</h2>
+        <div class="compact-list">
+          ${(stats.recentResults || []).length ? (stats.recentResults || []).map((row) => `
+            <div class="admin-activity-row">
+              <strong>${escapeHtml(row.player || "--")}</strong>
+              <span>${escapeHtml(row.preset_name || "Attempt")} - ${formatAdminDate(row.date)}</span>
+            </div>
+          `).join("") : `<p class="panel-copy">No cloud attempts yet.</p>`}
+        </div>
+      </article>
+    </section>
+  `;
 }
 
 function renderProfile() {
@@ -1820,6 +1901,16 @@ function attemptScoreValue(result) {
   const bestScore = bestReaction === Number.MAX_SAFE_INTEGER ? speedScore : clamp(Math.round(100 - ((bestReaction - 180) / 620) * 100), 0, 100);
   const volumeScore = clamp(Math.round(((result.hits || 0) / Math.max(1, result.config?.hitTarget || result.hits || 1)) * 100), 0, 100);
   const falsePenalty = clamp((result.falseHits || 0) * 6, 0, 30);
+  const mode = result.config?.activityMode || "";
+  if (mode === "focus") {
+    return clamp(Math.round(accuracy * 0.46 + speedScore * 0.26 + volumeScore * 0.16 + bestScore * 0.12 - falsePenalty * 1.5), 0, 100);
+  }
+  if (mode === "sequence") {
+    return clamp(Math.round(volumeScore * 0.34 + accuracy * 0.28 + speedScore * 0.24 + bestScore * 0.14 - falsePenalty), 0, 100);
+  }
+  if (mode === "homeBase") {
+    return clamp(Math.round(speedScore * 0.36 + accuracy * 0.3 + volumeScore * 0.22 + bestScore * 0.12 - falsePenalty), 0, 100);
+  }
   return clamp(Math.round(speedScore * 0.42 + accuracy * 0.32 + bestScore * 0.16 + volumeScore * 0.1 - falsePenalty), 0, 100);
 }
 
@@ -1960,10 +2051,11 @@ function playerProfileAnalytics(player, attempts) {
   const avgReaction = averageParsed(sorted.map((item) => parseMs(item.avgReaction)), Number.MAX_SAFE_INTEGER);
   const accuracy = Math.round(avg(sorted.map((item) => parsePercent(item.accuracy))));
   const presets = presetPerformance(sorted);
-  const recent = sorted.slice(0, Math.min(5, sorted.length)).reverse();
+  const recent = sorted.slice(0, Math.min(7, sorted.length)).reverse();
   const trend = recent.map((attempt, index) => ({
-    height: Math.max(12, attemptScoreValue(attempt)),
-    label: `#${index + 1}`
+    score: attemptScoreValue(attempt),
+    label: `#${index + 1}`,
+    preset: attempt.presetName || attempt.mode
   }));
   const firstHalf = sorted.slice(Math.ceil(sorted.length / 2));
   const secondHalf = sorted.slice(0, Math.ceil(sorted.length / 2));
@@ -1993,6 +2085,37 @@ function playerProfileAnalytics(player, attempts) {
   };
 }
 
+function renderTrendChart(points) {
+  if (!points.length) return `<div class="trend-chart empty-chart">No trend yet</div>`;
+  if (points.length === 1) {
+    return `<div class="trend-chart single-chart"><strong>${points[0].score}/100</strong><span>First recorded attempt</span></div>`;
+  }
+  const width = 320;
+  const height = 160;
+  const pad = 22;
+  const xStep = (width - pad * 2) / Math.max(1, points.length - 1);
+  const coords = points.map((point, index) => {
+    const x = pad + index * xStep;
+    const y = height - pad - (clamp(point.score, 0, 100) / 100) * (height - pad * 2);
+    return { ...point, x, y };
+  });
+  const path = coords.map((point) => `${point.x},${point.y}`).join(" ");
+  return `
+    <div class="trend-chart">
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Player score trend">
+        <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}"></line>
+        <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}"></line>
+        <polyline points="${path}"></polyline>
+        ${coords.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="4"></circle><text x="${point.x}" y="${height - 4}">${escapeHtml(point.label)}</text>`).join("")}
+      </svg>
+      <div class="trend-caption">
+        <span>${points[0].score}/100 first</span>
+        <strong>${points[points.length - 1].score}/100 latest</strong>
+      </div>
+    </div>
+  `;
+}
+
 function presetPerformance(attempts) {
   const groups = new Map();
   attempts.forEach((attempt) => {
@@ -2013,6 +2136,10 @@ function presetPerformance(attempts) {
 function averageParsed(values, invalidValue) {
   const valid = values.filter((value) => Number.isFinite(value) && value !== invalidValue);
   return valid.length ? Math.round(avg(valid)) : "--";
+}
+
+function formatAdminDate(value) {
+  return value ? new Date(value).toLocaleString() : "--";
 }
 
 function buildSummary() {
