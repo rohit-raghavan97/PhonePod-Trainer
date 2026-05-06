@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.16 - 2026-05-06
+
+- Fixed result history sync so cloud results no longer replace local results with an empty table.
+- Added startup reconciliation that merges local and Supabase players, presets, and results.
+- Added automatic retry sync for locally saved attempts.
+
 ## v1.15 - 2026-05-06
 
 - Added descriptions for custom presets.

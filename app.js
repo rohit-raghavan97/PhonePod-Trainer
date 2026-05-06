@@ -349,18 +349,22 @@ function createBackendClient() {
 
 async function loadSharedData() {
   try {
+    const localPlayers = [...state.players];
+    const localPresets = [...state.customPresets];
+    const localHistory = [...state.history];
     const [players, presets, results] = await Promise.all([
       state.backend.client.from(backendTables.players).select("id,name,note").order("name", { ascending: true }),
       state.backend.client.from(backendTables.customPresets).select("id,name,description,config").order("name", { ascending: true }),
       state.backend.client.from(backendTables.results).select("*").order("date", { ascending: false }).limit(100)
     ]);
     if (players.error || presets.error || results.error) throw players.error || presets.error || results.error;
-    state.players = players.data || [];
-    state.customPresets = (presets.data || []).map(rowToPreset);
-    state.history = (results.data || []).map(rowToResult);
+    state.players = mergePlayers(players.data || [], localPlayers);
+    state.customPresets = mergePresets((presets.data || []).map(rowToPreset), localPresets);
+    state.history = mergeResults((results.data || []).map(rowToResult), localHistory);
     state.backend.ready = true;
     state.backend.message = "Shared Supabase storage";
     cacheLocalData();
+    syncSharedData().catch(() => {});
   } catch {
     state.backend.ready = false;
     state.backend.message = "Using local storage. Check Supabase config.";
@@ -385,6 +389,15 @@ async function saveCustomPresets() {
   if (!state.backend.ready) return;
   const { error } = await state.backend.client.from(backendTables.customPresets).upsert(state.customPresets.map(presetToRow), { onConflict: "id" });
   if (error) throw error;
+}
+
+async function syncSharedData() {
+  if (!state.backend.ready) return;
+  await Promise.all([
+    state.players.length ? state.backend.client.from(backendTables.players).upsert(state.players, { onConflict: "id" }) : Promise.resolve(),
+    state.customPresets.length ? state.backend.client.from(backendTables.customPresets).upsert(state.customPresets.map(presetToRow), { onConflict: "id" }) : Promise.resolve(),
+    state.history.length ? state.backend.client.from(backendTables.results).upsert(state.history.map(resultToRow), { onConflict: "id" }) : Promise.resolve()
+  ]);
 }
 
 async function trackAppUser() {
@@ -1687,7 +1700,12 @@ function saveResult() {
   state.selectedResultId = result.id;
   localStorage.setItem(storageKeys.history, JSON.stringify(history));
   if (state.backend.ready) {
-    state.backend.client.from(backendTables.results).upsert(resultToRow(result), { onConflict: "id" });
+    state.backend.client
+      .from(backendTables.results)
+      .upsert(resultToRow(result), { onConflict: "id" })
+      .then(({ error }) => {
+        if (error) state.backend.message = "Result saved locally. Cloud sync will retry on next open.";
+      });
   }
 }
 
@@ -1808,6 +1826,38 @@ function rowToResult(row) {
     score: row.score || 0,
     config: row.config
   };
+}
+
+function mergePlayers(remotePlayers, localPlayers) {
+  const merged = [];
+  [...remotePlayers, ...localPlayers].forEach((player) => {
+    const nameKey = normalizeName(player.name);
+    if (!nameKey || merged.some((item) => item.id === player.id || normalizeName(item.name) === nameKey)) return;
+    merged.push(player);
+  });
+  return merged.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function mergePresets(remotePresets, localPresets) {
+  const merged = [];
+  [...remotePresets, ...localPresets].forEach((preset) => {
+    if (!preset?.id) return;
+    const nameKey = normalizeName(preset.name);
+    const signature = presetConfigSignature(preset.config || {});
+    const duplicate = merged.some((item) => item.id === preset.id || normalizeName(item.name) === nameKey || presetConfigSignature(item.config || {}) === signature);
+    if (!duplicate) merged.push({ ...preset, type: "custom" });
+  });
+  return merged.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function mergeResults(remoteResults, localResults) {
+  const byId = new Map();
+  [...remoteResults, ...localResults].forEach((result) => {
+    if (result?.id && !byId.has(result.id)) byId.set(result.id, result);
+  });
+  return [...byId.values()]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 100);
 }
 
 function buildSummary() {
