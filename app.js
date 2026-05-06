@@ -110,6 +110,7 @@ const state = {
   customPresets: [],
   history: [],
   selectedPresetId: "",
+  selectedPlayerId: "",
   currentPage: "home",
   isHandlingPopState: false,
   editingPresetId: null,
@@ -258,6 +259,10 @@ function bindControls() {
   $("profileForm").addEventListener("submit", saveProfile);
   $("openPlayerButton").addEventListener("click", openPlayerDialog);
   $("playersAddPlayerButton").addEventListener("click", openPlayerDialog);
+  $("playerList").addEventListener("click", (event) => {
+    const card = event.target.closest("[data-player-id]");
+    if (card) openPlayerProfile(card.dataset.playerId);
+  });
   $("cancelPlayerButton").addEventListener("click", () => $("playerDialog").close());
   $("playerForm").addEventListener("submit", savePlayer);
   $("savePresetButton").addEventListener("click", openSavePresetDialog);
@@ -291,6 +296,7 @@ function showPage(page, options = {}) {
     renderResultDetail();
   }
   if (page === "players") renderPlayers();
+  if (page === "playerProfile") renderPlayerProfile();
   if (page === "leaderboards") renderLeaderboards();
   if (page === "presets") renderPresets();
   if (page === "presetDetail" && state.selectedPresetId) renderPresetDetail();
@@ -490,6 +496,92 @@ function renderPlayers() {
     ? sortedPlayers.map((player) => `<button class="player-card selectable-card" data-player-id="${player.id}" type="button"><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.note || "Player")}</span></button>`).join("")
     : `<p class="panel-copy">No players yet.</p>`;
   if ($("playerList")) $("playerList").innerHTML = html;
+}
+
+function openPlayerProfile(id) {
+  state.selectedPlayerId = id;
+  renderPlayerProfile();
+  showPage("playerProfile");
+}
+
+function renderPlayerProfile() {
+  if (!$("playerProfileContent")) return;
+  const player = state.players.find((item) => item.id === state.selectedPlayerId) || state.players[0];
+  if (!player) {
+    $("playerProfileTitle").textContent = "Player insights";
+    $("playerProfileContent").innerHTML = `<p class="panel-copy">Add a player and complete attempts to see insights.</p>`;
+    return;
+  }
+  state.selectedPlayerId = player.id;
+  $("playerProfileTitle").textContent = player.name;
+  const attempts = getHistory().filter((item) => normalizeName(item.player) === normalizeName(player.name));
+  if (!attempts.length) {
+    $("playerProfileContent").innerHTML = `
+      <section class="player-hero-panel">
+        <div><p class="eyebrow">No attempts yet</p><h2>${escapeHtml(player.name)}</h2><p>${escapeHtml(player.note || "Player")}</p></div>
+        <div class="player-score-orb"><strong>--</strong><span>Score</span></div>
+      </section>
+      <section class="home-panel"><p class="panel-copy">Once this player completes a drill, this page will show trends, strengths, weaknesses, and recent performance.</p></section>
+    `;
+    return;
+  }
+  const profile = playerProfileAnalytics(player, attempts);
+  $("playerProfileContent").innerHTML = `
+    <section class="player-hero-panel">
+      <div>
+        <p class="eyebrow">${attempts.length} attempts tracked</p>
+        <h2>${escapeHtml(player.name)}</h2>
+        <p>${escapeHtml(profile.headline)}</p>
+      </div>
+      <div class="player-score-orb"><strong>${profile.bestScore}</strong><span>Best score</span></div>
+    </section>
+    <section class="player-stat-grid">
+      <article><strong>${profile.avgScore}</strong><span>Avg score</span></article>
+      <article><strong>${profile.avgReaction}</strong><span>Avg reaction</span></article>
+      <article><strong>${profile.accuracy}</strong><span>Avg accuracy</span></article>
+      <article><strong>${profile.bestPreset}</strong><span>Best preset</span></article>
+    </section>
+    <section class="profile-grid-wide">
+      <article class="home-panel">
+        <h2>Improvement trend</h2>
+        <div class="trend-bars">${profile.trend.map((item) => `<span style="height:${item.height}%"><small>${item.label}</small></span>`).join("")}</div>
+        <p class="panel-copy">${escapeHtml(profile.trendInsight)}</p>
+      </article>
+      <article class="home-panel">
+        <h2>Strengths and weaknesses</h2>
+        <div class="insight-list">
+          ${profile.insights.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}
+        </div>
+      </article>
+    </section>
+    <section class="profile-grid-wide">
+      <article class="home-panel">
+        <h2>Preset performance</h2>
+        <div class="preset-performance-list">${profile.presets.map((preset) => `
+          <div>
+            <strong>${escapeHtml(preset.name)}</strong>
+            <span>${preset.score}/100 avg - ${preset.count} attempts</span>
+            <progress value="${preset.score}" max="100"></progress>
+          </div>
+        `).join("")}</div>
+      </article>
+      <article class="home-panel">
+        <h2>Recent attempts</h2>
+        <div class="compact-list">${attempts.slice(0, 5).map((attempt) => `
+          <button class="result-row" data-result-id="${attempt.id}" type="button">
+            <strong>${escapeHtml(attempt.presetName || attempt.mode)} <span>${attemptScore(attempt)}</span></strong>
+            <small>${attempt.avgReaction || "--"} avg - ${attempt.accuracy || "--"} - ${new Date(attempt.date).toLocaleDateString()}</small>
+          </button>
+        `).join("")}</div>
+      </article>
+    </section>
+  `;
+  $("playerProfileContent").querySelectorAll("[data-result-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedResultId = button.dataset.resultId;
+      showPage("results");
+    });
+  });
 }
 
 function renderProfile() {
@@ -1858,6 +1950,69 @@ function mergeResults(remoteResults, localResults) {
   return [...byId.values()]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 100);
+}
+
+function playerProfileAnalytics(player, attempts) {
+  const sorted = [...attempts].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const scores = sorted.map(attemptScoreValue);
+  const bestScore = Math.max(...scores);
+  const avgScore = Math.round(avg(scores));
+  const avgReaction = averageParsed(sorted.map((item) => parseMs(item.avgReaction)), Number.MAX_SAFE_INTEGER);
+  const accuracy = Math.round(avg(sorted.map((item) => parsePercent(item.accuracy))));
+  const presets = presetPerformance(sorted);
+  const recent = sorted.slice(0, Math.min(5, sorted.length)).reverse();
+  const trend = recent.map((attempt, index) => ({
+    height: Math.max(12, attemptScoreValue(attempt)),
+    label: `#${index + 1}`
+  }));
+  const firstHalf = sorted.slice(Math.ceil(sorted.length / 2));
+  const secondHalf = sorted.slice(0, Math.ceil(sorted.length / 2));
+  const earlyAvg = firstHalf.length ? avg(firstHalf.map(attemptScoreValue)) : avgScore;
+  const recentAvg = secondHalf.length ? avg(secondHalf.map(attemptScoreValue)) : avgScore;
+  const delta = Math.round(recentAvg - earlyAvg);
+  const weakest = [...sorted].sort((a, b) => attemptScoreValue(a) - attemptScoreValue(b))[0];
+  const fastest = [...sorted].sort((a, b) => parseMs(a.avgReaction) - parseMs(b.avgReaction))[0];
+  const cleanest = [...sorted].sort((a, b) => parsePercent(b.accuracy) - parsePercent(a.accuracy))[0];
+  const insights = [
+    delta > 4 ? `Improving: recent attempts are ${delta} points higher than earlier attempts.` : delta < -4 ? `Recent scores dipped by ${Math.abs(delta)} points. Consider more rest or simpler progressions.` : "Performance is stable across recent attempts.",
+    fastest ? `Fastest reactions came in ${fastest.presetName || fastest.mode} at ${fastest.avgReaction || "--"} average.` : "",
+    cleanest ? `Cleanest control was ${cleanest.accuracy || "--"} accuracy in ${cleanest.presetName || cleanest.mode}.` : "",
+    weakest ? `Main opportunity: ${weakest.presetName || weakest.mode} has the lowest score profile.` : ""
+  ].filter(Boolean);
+  return {
+    bestScore: `${bestScore}/100`,
+    avgScore: `${avgScore}/100`,
+    avgReaction: avgReaction === "--" ? "--" : `${avgReaction}ms`,
+    accuracy: `${accuracy}%`,
+    bestPreset: presets[0]?.name || "--",
+    trend,
+    trendInsight: delta > 0 ? `${player.name} is trending up by ${delta} points.` : delta < 0 ? `${player.name} is trending down by ${Math.abs(delta)} points.` : `${player.name}'s results are steady.`,
+    headline: `${presets[0]?.name || "Training"} is currently the strongest area.`,
+    insights,
+    presets
+  };
+}
+
+function presetPerformance(attempts) {
+  const groups = new Map();
+  attempts.forEach((attempt) => {
+    const key = attempt.presetId || attempt.presetName || attempt.mode;
+    if (!groups.has(key)) groups.set(key, { name: attempt.presetName || attempt.mode, attempts: [] });
+    groups.get(key).attempts.push(attempt);
+  });
+  return [...groups.values()]
+    .map((group) => ({
+      name: group.name,
+      count: group.attempts.length,
+      score: Math.round(avg(group.attempts.map(attemptScoreValue)))
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+}
+
+function averageParsed(values, invalidValue) {
+  const valid = values.filter((value) => Number.isFinite(value) && value !== invalidValue);
+  return valid.length ? Math.round(avg(valid)) : "--";
 }
 
 function buildSummary() {

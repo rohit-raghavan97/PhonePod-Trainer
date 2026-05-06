@@ -187,6 +187,132 @@ textarea {
   color: var(--muted);
 }
 
+.player-hero-panel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(57, 217, 138, 0.18), rgba(47, 128, 255, 0.08)), #10161b;
+  padding: clamp(1rem, 3vw, 1.4rem);
+}
+
+.player-hero-panel h2 {
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+}
+
+.player-score-orb {
+  display: grid;
+  place-items: center;
+  width: 7rem;
+  aspect-ratio: 1;
+  border: 1px solid rgba(57, 217, 138, 0.45);
+  border-radius: 50%;
+  background: rgba(16, 20, 24, 0.74);
+  box-shadow: 0 0 44px rgba(57, 217, 138, 0.16);
+}
+
+.player-score-orb strong {
+  font-size: 1.45rem;
+}
+
+.player-score-orb span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.player-stat-grid,
+.profile-grid-wide {
+  display: grid;
+  gap: 1rem;
+}
+
+.player-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+
+.player-stat-grid article {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(23, 29, 34, 0.88);
+  padding: 0.9rem;
+}
+
+.player-stat-grid strong {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.player-stat-grid span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.profile-grid-wide {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-bottom: 1rem;
+}
+
+.trend-bars {
+  display: flex;
+  align-items: end;
+  gap: 0.45rem;
+  min-height: 10rem;
+  padding: 1rem 0 0.4rem;
+}
+
+.trend-bars span {
+  position: relative;
+  flex: 1;
+  min-height: 1.2rem;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, var(--accent), #2f80ff);
+}
+
+.trend-bars small {
+  position: absolute;
+  left: 50%;
+  bottom: -1.4rem;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.preset-performance-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+}
+
+.preset-performance-list div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.preset-performance-list span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+progress {
+  width: 100%;
+  height: 0.65rem;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+progress::-webkit-progress-bar {
+  background: #202830;
+}
+
+progress::-webkit-progress-value {
+  background: var(--accent);
+}
+
 .preset-card {
   grid-template-columns: 1fr auto;
   align-items: start;
@@ -1334,6 +1460,8 @@ dd {
   .results-layout,
   .leaderboard-grid,
   .results-overview,
+  .player-stat-grid,
+  .profile-grid-wide,
   .player-page-list,
   .preset-detail-layout {
     grid-template-columns: 1fr;

@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.17 - 2026-05-06
+
+- Added selectable player profile pages from the Players roster.
+- Added player-level analytics for attempts, trends, strengths, weaknesses, preset performance, and recent results.
+- Added visual player score, trend bars, and interactive recent-attempt shortcuts.
+
 ## v1.16 - 2026-05-06
 
 - Fixed result history sync so cloud results no longer replace local results with an empty table.

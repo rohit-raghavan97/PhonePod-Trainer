@@ -6,7 +6,7 @@ Live app: https://rohit-raghavan97.github.io/Reflex/
 
 ## Current Version
 
-`v1.16`
+`v1.17`
 
 ## Main Features
 
